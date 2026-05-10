@@ -1,0 +1,25 @@
+<div class="gate-wrap">
+    <div class="gate-ring-wrap">
+        <div class="gate-ring gate-ring--sm">
+            <div class="gate-ring-inner">
+                <div class="gate-logo-text" aria-label="Club9">
+                    <span>C</span><span>L</span><span>U</span><span>B</span><span>9</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="gate-form-wrap">
+        <div class="status-gate-icon">&#x23F3;</div>
+        <h2 class="status-gate-heading">APPLICATION PENDING</h2>
+        <p class="status-gate-body">
+            Your membership request has been received.<br>
+            You will gain access once it has been reviewed.<br>
+            This usually takes less than 24 hours.
+        </p>
+        <a href="/auth/refresh-status" class="gate-btn mt-3">CHECK AGAIN</a>
+        <p class="gate-switch mt-3">
+            Signed in as <strong>{{session.user.username}}</strong>
+            &middot; <a href="/logout">Sign out</a>
+        </p>
+    </div>
+</div>

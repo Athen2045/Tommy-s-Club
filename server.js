@@ -250,6 +250,11 @@ app.get('/logout', (req, res) => {
     res.redirect('/blog');
 });
 
+// ── Routes: access gate screens ───────────────────────────
+
+app.get('/pending',  (req, res) => res.render('pending',  GATE));
+app.get('/rejected', (req, res) => res.render('rejected', GATE));
+
 // ── Routes: profile ───────────────────────────────────────
 
 app.get('/profile', ensureLogin, async (req, res) => {
