@@ -17,3 +17,8 @@ CREATE POLICY "Members can send messages" ON public.messages
 
 CREATE POLICY "Members delete own messages" ON public.messages
     FOR DELETE USING (auth.uid() = author_id);
+
+-- Enable Supabase Realtime for live chat (free tier compatible)
+-- Note: "Database > Replication" has moved to "Database > Publications" in newer dashboard.
+-- This SQL does the same thing as toggling the table in the dashboard.
+ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
