@@ -16,7 +16,9 @@
         <div class="empty-state text-center py-5">
             <i class="bi bi-tags display-1 text-muted"></i>
             <h3 class="mt-3 text-muted">No categories yet</h3>
+            {{#if session.user.isAdmin}}
             <a href="/categories/add" class="btn btn-primary rounded-pill mt-2">Create one</a>
+            {{/if}}
         </div>
         {{else}}
         <div class="row g-3">
