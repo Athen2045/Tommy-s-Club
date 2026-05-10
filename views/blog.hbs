@@ -35,6 +35,17 @@
         </div>
         {{/if}}
 
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">The Room</div>
+            <nav class="sidebar-nav">
+                <a href="/chat" class="sidebar-link" id="chatSidebarLink">
+                    <i class="bi bi-chat-fill sidebar-icon"></i>
+                    <span>Club Chat</span>
+                    <span class="chat-unread-badge" id="chatUnreadBadge" style="display:none">&#x25CF;</span>
+                </a>
+            </nav>
+        </div>
+
         <div class="sidebar-footer">
             {{#if session.user}}
             <div class="sidebar-user-chip">
@@ -164,3 +175,19 @@
         </section>
     </div>
 </div>
+
+<script>
+(function () {
+    var badge = document.getElementById('chatUnreadBadge');
+    if (!badge) return;
+    var lastSeen = parseInt(localStorage.getItem('club9_last_msg') || '0', 10);
+    fetch('/chat/unread-count')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.latestId && data.latestId > lastSeen) {
+                badge.style.display = 'inline';
+            }
+        })
+        .catch(function () {});
+})();
+</script>
