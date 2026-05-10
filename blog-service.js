@@ -217,3 +217,21 @@ module.exports.getProfileStatus = async (userId) => {
     if (error) return null;
     return data;
 };
+
+module.exports.getPendingProfiles = async () => {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+    if (error) throw new Error('unable to fetch pending profiles');
+    return data || [];
+};
+
+module.exports.updateProfileStatus = async (userId, status) => {
+    const { error } = await supabase
+        .from('profiles')
+        .update({ status })
+        .eq('id', userId);
+    if (error) throw new Error('unable to update profile status');
+};

@@ -298,6 +298,27 @@ app.post('/profile', ensureLogin, upload.single('avatar'), async (req, res) => {
     }
 });
 
+// ── Routes: admin approvals ───────────────────────────────
+
+app.get('/admin/approvals', ensureAdmin, async (req, res) => {
+    try {
+        const pending = await blogService.getPendingProfiles();
+        res.render('admin/approvals', { pending });
+    } catch (err) {
+        res.render('admin/approvals', { pending: [], errorMessage: err.message });
+    }
+});
+
+app.post('/admin/approvals/:id/approve', ensureAdmin, async (req, res) => {
+    try { await blogService.updateProfileStatus(req.params.id, 'approved'); } catch (e) {}
+    res.redirect('/admin/approvals');
+});
+
+app.post('/admin/approvals/:id/reject', ensureAdmin, async (req, res) => {
+    try { await blogService.updateProfileStatus(req.params.id, 'rejected'); } catch (e) {}
+    res.redirect('/admin/approvals');
+});
+
 // ── Routes: admin posts ───────────────────────────────────
 
 function ensureAdmin(req, res, next) {
