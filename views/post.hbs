@@ -1,0 +1,254 @@
+<article class="single-post">
+    <!-- Post header -->
+    <header class="post-header">
+        <div class="container post-container">
+            {{#if post.categories}}
+            <a href="/blog?category={{post.categories.id}}" class="category-badge mb-3 d-inline-block">
+                {{post.categories.name}}
+            </a>
+            {{/if}}
+            <h1 class="post-title">{{post.title}}</h1>
+            <div class="post-meta mb-4">
+                <div class="meta-author">
+                    {{#if post.profiles.avatar_url}}
+                    <img src="{{post.profiles.avatar_url}}" class="meta-avatar" alt="author">
+                    {{else}}
+                    <span class="meta-avatar-initials">{{avatarInitial post.profiles.username}}</span>
+                    {{/if}}
+                    <div>
+                        <div class="fw-medium">{{post.profiles.username}}</div>
+                        <div class="text-muted small">{{formatDate post.created_at}} · {{readTime post.body}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Feature image -->
+    {{#if post.feature_image}}
+    <div class="post-feature-image-wrap">
+        <div class="container post-container">
+            <img src="{{post.feature_image}}" alt="{{post.title}}" class="post-feature-image">
+        </div>
+    </div>
+    {{/if}}
+
+    <!-- Post body -->
+    <div class="container post-container">
+        <div class="post-body">
+            {{{safeHTML post.body}}}
+        </div>
+
+        <!-- Reaction bar -->
+        <div class="reaction-bar" id="reactionBar" data-post-id="{{post.id}}"></div>
+
+        <!-- Tags row -->
+        <div class="post-footer-row">
+            <a href="/blog" class="btn btn-outline-secondary btn-sm rounded-pill">
+                <i class="bi bi-arrow-left me-1"></i>Back to blog
+            </a>
+            <span class="text-muted small">{{commentCount}} comment{{#gt commentCount 1}}s{{/gt}}</span>
+        </div>
+    </div>
+</article>
+
+<!-- Comments Section -->
+<section class="comments-section" id="comments">
+    <div class="container post-container">
+        <h3 class="comments-heading">
+            <i class="bi bi-chat-square-text me-2"></i>
+            {{commentCount}} Comment{{#gt commentCount 1}}s{{/gt}}
+        </h3>
+
+        <!-- New comment form -->
+        {{#if session.user}}
+        <div class="comment-form-card mb-5">
+            <div class="d-flex gap-3">
+                <div class="flex-shrink-0">
+                    {{#if session.user.avatar_url}}
+                    <img src="{{session.user.avatar_url}}" class="meta-avatar" alt="you">
+                    {{else}}
+                    <span class="meta-avatar-initials">{{avatarInitial session.user.username}}</span>
+                    {{/if}}
+                </div>
+                <form method="POST" action="/blog/{{post.id}}/comments" class="flex-grow-1">
+                    <textarea name="body" class="form-control comment-textarea" rows="3"
+                        placeholder="Share your thoughts…" required></textarea>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 btn-sm">
+                            Post comment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {{else}}
+        <div class="comment-cta">
+            <p class="mb-0">
+                <a href="/login">Sign in</a> or <a href="/register">create an account</a> to join the conversation.
+            </p>
+        </div>
+        {{/if}}
+
+        <!-- Comment thread -->
+        {{#if commentTree}}
+        <div class="comment-list">
+            {{#each commentTree}}
+            <div class="comment-item" id="comment-{{id}}">
+                <div class="d-flex gap-3">
+                    <div class="flex-shrink-0">
+                        {{#if profiles.avatar_url}}
+                        <img src="{{profiles.avatar_url}}" class="meta-avatar" alt="author">
+                        {{else}}
+                        <span class="meta-avatar-initials">{{avatarInitial profiles.username}}</span>
+                        {{/if}}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="comment-meta">
+                            <span class="fw-semibold">{{profiles.username}}</span>
+                            <span class="text-muted small ms-2">{{timeAgo created_at}}</span>
+                        </div>
+                        <p class="comment-body">{{body}}</p>
+                        <div class="comment-actions">
+                            {{#if ../session.user}}
+                            <button class="btn btn-link btn-sm p-0 reply-toggle text-muted"
+                                data-id="{{id}}">
+                                <i class="bi bi-reply me-1"></i>Reply
+                            </button>
+                            {{/if}}
+                            {{#equal ../session.user.id author_id}}
+                            <a href="/comments/delete/{{id}}?post={{../post.id}}"
+                                class="btn btn-link btn-sm p-0 text-danger ms-3"
+                                onclick="return confirm('Delete this comment?')">
+                                <i class="bi bi-trash me-1"></i>Delete
+                            </a>
+                            {{/equal}}
+                        </div>
+
+                        <!-- Reply form (hidden by default) -->
+                        {{#if ../session.user}}
+                        <div class="reply-form mt-3" id="reply-form-{{id}}" style="display:none">
+                            <form method="POST" action="/blog/{{../post.id}}/comments">
+                                <input type="hidden" name="parent_id" value="{{id}}">
+                                <textarea name="body" class="form-control comment-textarea" rows="2"
+                                    placeholder="Write a reply…" required></textarea>
+                                <div class="d-flex gap-2 justify-content-end mt-2">
+                                    <button type="button" class="btn btn-ghost-sm cancel-reply" data-id="{{id}}">
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">
+                                        Reply
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        {{/if}}
+
+                        <!-- Nested replies -->
+                        {{#if replies}}
+                        <div class="replies-list mt-3">
+                            {{#each replies}}
+                            <div class="comment-item reply-item d-flex gap-3" id="comment-{{id}}">
+                                <div class="flex-shrink-0">
+                                    {{#if profiles.avatar_url}}
+                                    <img src="{{profiles.avatar_url}}" class="meta-avatar-xs" alt="">
+                                    {{else}}
+                                    <span class="meta-avatar-initials-xs">{{avatarInitial profiles.username}}</span>
+                                    {{/if}}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="comment-meta">
+                                        <span class="fw-semibold">{{profiles.username}}</span>
+                                        <span class="text-muted small ms-2">{{timeAgo created_at}}</span>
+                                    </div>
+                                    <p class="comment-body mb-1">{{body}}</p>
+                                    {{#equal ../../session.user.id author_id}}
+                                    <a href="/comments/delete/{{id}}?post={{../../post.id}}"
+                                        class="btn btn-link btn-sm p-0 text-danger"
+                                        onclick="return confirm('Delete this reply?')">
+                                        <i class="bi bi-trash me-1"></i>Delete
+                                    </a>
+                                    {{/equal}}
+                                </div>
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        {{else}}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-chat display-4 d-block mb-2 opacity-25"></i>
+            No comments yet. Be the first!
+        </div>
+        {{/if}}
+    </div>
+</section>
+
+<script>
+    document.querySelectorAll('.reply-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const form = document.getElementById('reply-form-' + btn.dataset.id);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            if (form.style.display === 'block') form.querySelector('textarea').focus();
+        });
+    });
+    document.querySelectorAll('.cancel-reply').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('reply-form-' + btn.dataset.id).style.display = 'none';
+        });
+    });
+</script>
+
+<script>
+(function () {
+    var KEYS  = ['fire','heart','eye','sparkle','black_heart'];
+    var EMOJI = { fire:'🔥', heart:'❤️', eye:'👁️', sparkle:'✨', black_heart:'🖤' };
+    var bar   = document.getElementById('reactionBar');
+    if (!bar) return;
+    var postId      = bar.dataset.postId;
+    var counts      = JSON.parse('{{reactionCounts}}');
+    var userReacted = JSON.parse('{{userReactions}}');
+
+    function renderBar() {
+        bar.textContent = '';
+        KEYS.forEach(function (key) {
+            var btn = document.createElement('button');
+            btn.className = 'reaction-btn' + (userReacted.indexOf(key) !== -1 ? ' reaction-btn--active' : '');
+            btn.setAttribute('data-key', key);
+            btn.setAttribute('type', 'button');
+            btn.addEventListener('click', function () { react(key); });
+            var emojiSpan = document.createElement('span');
+            emojiSpan.textContent = EMOJI[key];
+            var countSpan = document.createElement('span');
+            countSpan.className = 'reaction-count';
+            countSpan.textContent = counts[key] || 0;
+            btn.appendChild(emojiSpan);
+            btn.appendChild(document.createTextNode(' '));
+            btn.appendChild(countSpan);
+            bar.appendChild(btn);
+        });
+    }
+
+    function react(key) {
+        fetch('/blog/' + postId + '/react', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emoji: key })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.counts) {
+                counts      = data.counts;
+                userReacted = data.userReactions;
+                renderBar();
+            }
+        });
+    }
+
+    renderBar();
+})();
+</script>

@@ -173,19 +173,27 @@ app.get('/blog', async (req, res) => {
 
 app.get('/blog/:id', async (req, res) => {
     try {
-        const post = await blogService.getPostById(req.params.id);
+        const post        = await blogService.getPostById(req.params.id);
         const allComments = await blogService.getCommentsByPost(req.params.id);
-        const categories = await blogService.getCategories();
+        const categories  = await blogService.getCategories();
+        const { counts: reactionCounts, userReactions } =
+            await blogService.getReactionsByPost(req.params.id, req.session.user?.id);
 
-        // Build 1-level comment thread
         const topLevel = allComments.filter(c => !c.parent_id);
-        const replies = allComments.filter(c => c.parent_id);
+        const replies  = allComments.filter(c => c.parent_id);
         const commentTree = topLevel.map(c => ({
             ...c,
             replies: replies.filter(r => r.parent_id === c.id)
         }));
 
-        res.render('post', { post, commentTree, categories, commentCount: allComments.length });
+        res.render('post', {
+            post,
+            commentTree,
+            categories,
+            commentCount:   allComments.length,
+            reactionCounts: JSON.stringify(reactionCounts),
+            userReactions:  JSON.stringify(userReactions)
+        });
     } catch (err) {
         res.status(404).render('404');
     }
@@ -209,6 +217,21 @@ app.get('/comments/delete/:id', ensureLogin, async (req, res) => {
     const postId = req.query.post;
     try { await blogService.deleteCommentById(req.params.id); } catch (e) {}
     res.redirect(`/blog/${postId}#comments`);
+});
+
+// ── Routes: reactions ─────────────────────────────────────
+
+app.post('/blog/:id/react', ensureLogin, async (req, res) => {
+    try {
+        const result = await blogService.toggleReaction(
+            parseInt(req.params.id),
+            req.session.user.id,
+            req.body.emoji
+        );
+        res.json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 // ── Routes: auth ──────────────────────────────────────────
