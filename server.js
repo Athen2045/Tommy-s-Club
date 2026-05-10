@@ -255,6 +255,23 @@ app.get('/logout', (req, res) => {
 app.get('/pending',  (req, res) => res.render('pending',  GATE));
 app.get('/rejected', (req, res) => res.render('rejected', GATE));
 
+app.get('/auth/refresh-status', async (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    try {
+        const fresh = await blogService.getProfileStatus(req.session.user.id);
+        if (fresh) {
+            req.session.user.status         = fresh.status;
+            req.session.user.terms_accepted = fresh.terms_accepted;
+        }
+    } catch (e) { /* keep existing session values on error */ }
+
+    const u = req.session.user;
+    if (u.status === 'approved' && u.terms_accepted)  return res.redirect('/blog');
+    if (u.status === 'approved' && !u.terms_accepted) return res.redirect('/terms');
+    if (u.status === 'rejected')                      return res.redirect('/rejected');
+    return res.redirect('/pending');
+});
+
 // ── Routes: profile ───────────────────────────────────────
 
 app.get('/profile', ensureLogin, async (req, res) => {
