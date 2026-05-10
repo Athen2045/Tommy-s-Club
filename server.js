@@ -479,6 +479,61 @@ app.get('/member/:username', ensureLogin, async (req, res) => {
     }
 });
 
+// ── Routes: club chat ─────────────────────────────────────
+
+app.get('/chat', ensureLogin, async (req, res) => {
+    try {
+        const messages = await blogService.getMessageHistory(100);
+        const members  = await blogService.getAllMemberUsernames();
+        res.render('chat', {
+            messages,
+            membersJson:     JSON.stringify(members),
+            supabaseUrl:     process.env.SUPABASE_URL,
+            supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+            currentUserId:   req.session.user.id,
+            currentUsername: req.session.user.username,
+            isAdmin:         !!req.session.user.isAdmin
+        });
+    } catch (err) {
+        res.render('chat', {
+            messages: [], membersJson: '[]',
+            supabaseUrl: '', supabaseAnonKey: '',
+            currentUserId: '', currentUsername: '', isAdmin: false
+        });
+    }
+});
+
+app.post('/chat/send', ensureLogin, async (req, res) => {
+    try {
+        const result = await blogService.insertMessage(req.session.user.id, req.body.body);
+        res.json({ ok: true, id: result.id, created_at: result.created_at });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+app.delete('/chat/:id', ensureLogin, async (req, res) => {
+    try {
+        await blogService.deleteMessage(
+            parseInt(req.params.id),
+            req.session.user.id,
+            req.session.user.isAdmin
+        );
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(403).json({ error: err.message });
+    }
+});
+
+app.get('/chat/unread-count', ensureLogin, async (req, res) => {
+    try {
+        const latestId = await blogService.getLatestMessageId();
+        res.json({ latestId });
+    } catch (e) {
+        res.json({ latestId: 0 });
+    }
+});
+
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => res.status(404).render('404'));
 
