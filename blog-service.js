@@ -305,3 +305,53 @@ module.exports.getMemberByUsername = async (username) => {
 
     return { ...profile, posts: posts || [] };
 };
+
+// ── Chat ──────────────────────────────────────────────────
+
+module.exports.getMessageHistory = async (limit) => {
+    limit = limit || 100;
+    const { data, error } = await supabase
+        .from('messages')
+        .select('id, body, author_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+    if (error) return [];
+    return attachProfiles((data || []).reverse());
+};
+
+module.exports.insertMessage = async (authorId, body) => {
+    var text = (body || '').trim();
+    if (!text) throw new Error('message cannot be empty');
+    if (text.length > 2000) throw new Error('message too long');
+    const { data, error } = await supabase
+        .from('messages')
+        .insert({ author_id: authorId, body: text })
+        .select('id, created_at')
+        .single();
+    if (error) throw new Error('unable to send message');
+    return data;
+};
+
+module.exports.deleteMessage = async (messageId, requesterId, isAdmin) => {
+    const { data: msg } = await supabase
+        .from('messages').select('author_id').eq('id', messageId).single();
+    if (!msg) throw new Error('message not found');
+    if (!isAdmin && msg.author_id !== requesterId) throw new Error('not authorised');
+    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+    if (error) throw new Error('unable to delete message');
+};
+
+module.exports.getLatestMessageId = async () => {
+    const { data } = await supabase
+        .from('messages').select('id').order('id', { ascending: false }).limit(1).single();
+    return data ? data.id : 0;
+};
+
+module.exports.getAllMemberUsernames = async () => {
+    const { data } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('status', 'approved')
+        .order('username');
+    return (data || []).map(function (p) { return p.username; });
+};
