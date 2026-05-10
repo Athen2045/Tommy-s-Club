@@ -393,9 +393,9 @@ app.get('/categories', ensureLogin, async (req, res) => {
     }
 });
 
-app.get('/categories/add', ensureLogin, (req, res) => res.render('addCategory'));
+app.get('/categories/add', ensureAdmin, (req, res) => res.render('addCategory'));
 
-app.post('/categories/add', ensureLogin, async (req, res) => {
+app.post('/categories/add', ensureAdmin, async (req, res) => {
     try {
         await blogService.addCategory(req.body);
         res.redirect('/categories');
@@ -404,7 +404,7 @@ app.post('/categories/add', ensureLogin, async (req, res) => {
     }
 });
 
-app.get('/categories/delete/:id', ensureLogin, async (req, res) => {
+app.get('/categories/delete/:id', ensureAdmin, async (req, res) => {
     try {
         await blogService.deleteCategoryById(req.params.id);
         res.redirect('/categories');
