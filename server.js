@@ -467,6 +467,18 @@ app.get('/categories/delete/:id', ensureAdmin, async (req, res) => {
     }
 });
 
+// ── Routes: member profiles ───────────────────────────────
+
+app.get('/member/:username', ensureLogin, async (req, res) => {
+    try {
+        const member     = await blogService.getMemberByUsername(req.params.username);
+        const categories = await blogService.getCategories();
+        res.render('member', { member, categories });
+    } catch (err) {
+        res.status(404).render('404');
+    }
+});
+
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => res.status(404).render('404'));
 

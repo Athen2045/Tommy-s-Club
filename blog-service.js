@@ -287,3 +287,21 @@ module.exports.toggleReaction = async (postId, userId, emojiKey) => {
 
     return module.exports.getReactionsByPost(postId, userId);
 };
+
+module.exports.getMemberByUsername = async (username) => {
+    const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, bio, created_at')
+        .eq('username', username)
+        .single();
+    if (error || !profile) throw new Error('member not found');
+
+    const { data: posts } = await supabase
+        .from('posts')
+        .select('id, title, body, created_at')
+        .eq('author_id', profile.id)
+        .eq('published', true)
+        .order('created_at', { ascending: false });
+
+    return { ...profile, posts: posts || [] };
+};

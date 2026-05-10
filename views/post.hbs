@@ -16,7 +16,7 @@
                     <span class="meta-avatar-initials">{{avatarInitial post.profiles.username}}</span>
                     {{/if}}
                     <div>
-                        <div class="fw-medium">{{post.profiles.username}}</div>
+                        <div class="fw-medium"><a href="/member/{{post.profiles.username}}" class="fw-medium text-decoration-none text-body member-link">{{post.profiles.username}}</a></div>
                         <div class="text-muted small">{{formatDate post.created_at}} · {{readTime post.body}}</div>
                     </div>
                 </div>
@@ -105,7 +105,7 @@
                     </div>
                     <div class="flex-grow-1">
                         <div class="comment-meta">
-                            <span class="fw-semibold">{{profiles.username}}</span>
+                            <span class="fw-semibold"><a href="/member/{{profiles.username}}" class="fw-semibold text-decoration-none text-body member-link">{{profiles.username}}</a></span>
                             <span class="text-muted small ms-2">{{timeAgo created_at}}</span>
                         </div>
                         <p class="comment-body">{{body}}</p>
@@ -158,7 +158,7 @@
                                 </div>
                                 <div class="flex-grow-1">
                                     <div class="comment-meta">
-                                        <span class="fw-semibold">{{profiles.username}}</span>
+                                        <span class="fw-semibold"><a href="/member/{{profiles.username}}" class="fw-semibold text-decoration-none text-body member-link">{{profiles.username}}</a></span>
                                         <span class="text-muted small ms-2">{{timeAgo created_at}}</span>
                                     </div>
                                     <p class="comment-body mb-1">{{body}}</p>

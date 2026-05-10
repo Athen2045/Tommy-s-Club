@@ -1,0 +1,166 @@
+<div class="blog-layout">
+
+    <!-- Discord-style category sidebar -->
+    <aside class="category-sidebar">
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Browse</div>
+            <nav class="sidebar-nav">
+                <a href="/blog" class="sidebar-link {{#unless activeCategory}}active{{/unless}}">
+                    <i class="bi bi-grid-3x3-gap-fill sidebar-icon"></i>
+                    <span>All Posts</span>
+                </a>
+                {{#each categories}}
+                <a href="/blog?category={{id}}" class="sidebar-link {{#equal id ../activeCategory}}active{{/equal}}">
+                    <i class="bi bi-hash sidebar-icon"></i>
+                    <span>{{name}}</span>
+                </a>
+                {{/each}}
+            </nav>
+        </div>
+
+        {{#if session.user}}
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">Your Space</div>
+            <nav class="sidebar-nav">
+                <a href="/posts/add" class="sidebar-link">
+                    <i class="bi bi-pencil-square sidebar-icon"></i>
+                    <span>Write Post</span>
+                </a>
+                <a href="/posts" class="sidebar-link">
+                    <i class="bi bi-layout-text-sidebar sidebar-icon"></i>
+                    <span>Dashboard</span>
+                </a>
+            </nav>
+        </div>
+        {{/if}}
+
+        <div class="sidebar-footer">
+            {{#if session.user}}
+            <div class="sidebar-user-chip">
+                {{#if session.user.avatar_url}}
+                <img src="{{session.user.avatar_url}}" class="meta-avatar-xs" alt="">
+                {{else}}
+                <span class="meta-avatar-initials-xs">{{avatarInitial session.user.username}}</span>
+                {{/if}}
+                <span class="sidebar-username">{{session.user.username}}</span>
+            </div>
+            {{else}}
+            <a href="/register" class="sidebar-cta">
+                <i class="bi bi-shield-lock me-1"></i>Join Club9
+            </a>
+            {{/if}}
+        </div>
+
+    </aside>
+
+    <!-- Main content -->
+    <div class="blog-main">
+
+        <!-- Featured post -->
+        {{#if featuredPost}}
+        <section class="featured-section">
+            <div class="featured-inner">
+                <div class="featured-text">
+                    {{#if featuredPost.categories}}
+                    <a href="/blog?category={{featuredPost.categories.id}}" class="category-badge mb-3 d-inline-block">
+                        {{featuredPost.categories.name}}
+                    </a>
+                    {{/if}}
+                    <h1 class="hero-title">{{featuredPost.title}}</h1>
+                    <p class="hero-excerpt">{{excerpt featuredPost.body 160}}</p>
+                    <div class="post-meta mb-4">
+                        <span class="meta-author">
+                            {{#if featuredPost.profiles.avatar_url}}
+                            <img src="{{featuredPost.profiles.avatar_url}}" class="meta-avatar" alt="">
+                            {{else}}
+                            <span class="meta-avatar-initials">{{avatarInitial featuredPost.profiles.username}}</span>
+                            {{/if}}
+                            <a href="/member/{{featuredPost.profiles.username}}" class="text-decoration-none text-body member-link">{{featuredPost.profiles.username}}</a>
+                        </span>
+                        <span class="meta-dot">·</span>
+                        <span>{{timeAgo featuredPost.created_at}}</span>
+                        <span class="meta-dot">·</span>
+                        <span>{{readTime featuredPost.body}}</span>
+                    </div>
+                    <a href="/blog/{{featuredPost.id}}" class="btn btn-primary rounded-pill px-4">
+                        Read article <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="featured-image-wrap">
+                    {{#if featuredPost.feature_image}}
+                    <img src="{{featuredPost.feature_image}}" alt="{{featuredPost.title}}" class="hero-image">
+                    {{else}}
+                    <div class="hero-image-placeholder">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+        </section>
+        {{/if}}
+
+        <!-- Posts grid -->
+        <section class="posts-grid-section">
+
+            {{#if activeCategory}}
+            <div class="posts-grid-header">
+                <i class="bi bi-hash me-1"></i>
+                {{#each categories}}{{#equal id ../activeCategory}}{{name}}{{/equal}}{{/each}}
+            </div>
+            {{/if}}
+
+            {{#if message}}
+            <div class="empty-state text-center py-5">
+                <i class="bi bi-journal-x display-1 text-muted"></i>
+                <h3 class="mt-3 text-muted">No posts yet</h3>
+                <p class="text-muted">Check back soon for new content.</p>
+                {{#if session.user}}
+                <a href="/posts/add" class="btn btn-primary rounded-pill mt-2">Write the first post</a>
+                {{/if}}
+            </div>
+            {{else}}
+            <div class="posts-grid">
+                {{#each recentPosts}}
+                <article class="post-card">
+                    {{#if feature_image}}
+                    <a href="/blog/{{id}}" class="post-card-img-link">
+                        <img src="{{feature_image}}" alt="{{title}}" class="post-card-img">
+                    </a>
+                    {{else}}
+                    <a href="/blog/{{id}}" class="post-card-img-link post-card-img-placeholder">
+                        <i class="bi bi-journal-text"></i>
+                    </a>
+                    {{/if}}
+                    <div class="post-card-body">
+                        {{#if categories}}
+                        <a href="/blog?category={{categories.id}}" class="category-badge-sm">{{categories.name}}</a>
+                        {{/if}}
+                        <h2 class="post-card-title">
+                            <a href="/blog/{{id}}">{{title}}</a>
+                        </h2>
+                        <p class="post-card-excerpt">{{excerpt body 120}}</p>
+                        <div class="post-card-meta">
+                            <div class="meta-author">
+                                {{#if profiles.avatar_url}}
+                                <img src="{{profiles.avatar_url}}" class="meta-avatar-xs" alt="">
+                                {{else}}
+                                <span class="meta-avatar-initials-xs">{{avatarInitial profiles.username}}</span>
+                                {{/if}}
+                                <span><a href="/member/{{profiles.username}}" class="text-decoration-none text-body member-link">{{profiles.username}}</a></span>
+                            </div>
+                            <div class="meta-right">
+                                <span>{{timeAgo created_at}}</span>
+                                <span class="meta-dot">·</span>
+                                <span>{{readTime body}}</span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+                {{/each}}
+            </div>
+            {{/if}}
+
+        </section>
+    </div>
+</div>
