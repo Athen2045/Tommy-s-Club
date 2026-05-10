@@ -243,3 +243,47 @@ module.exports.acceptTerms = async (userId) => {
         .eq('id', userId);
     if (error) throw new Error('unable to accept terms');
 };
+
+// ── Reactions ─────────────────────────────────────────────
+
+const REACTION_KEYS   = ['fire', 'heart', 'eye', 'sparkle', 'black_heart'];
+const REACTION_EMOJI  = { fire: '🔥', heart: '❤️', eye: '👁️', sparkle: '✨', black_heart: '🖤' };
+
+module.exports.REACTION_EMOJI = REACTION_EMOJI;
+
+module.exports.getReactionsByPost = async (postId, userId) => {
+    const { data, error } = await supabase
+        .from('reactions')
+        .select('emoji, user_id')
+        .eq('post_id', postId);
+    if (error) return { counts: {}, userReactions: [] };
+
+    const counts = Object.fromEntries(REACTION_KEYS.map(k => [k, 0]));
+    const userReactions = [];
+    for (const r of (data || [])) {
+        if (counts[r.emoji] !== undefined) counts[r.emoji]++;
+        if (userId && r.user_id === userId) userReactions.push(r.emoji);
+    }
+    return { counts, userReactions };
+};
+
+module.exports.toggleReaction = async (postId, userId, emojiKey) => {
+    if (!REACTION_KEYS.includes(emojiKey)) throw new Error('invalid reaction');
+
+    const { data: existing } = await supabase
+        .from('reactions')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .eq('emoji', emojiKey)
+        .single();
+
+    if (existing) {
+        await supabase.from('reactions').delete()
+            .eq('post_id', postId).eq('user_id', userId).eq('emoji', emojiKey);
+    } else {
+        await supabase.from('reactions').insert({ post_id: postId, user_id: userId, emoji: emojiKey });
+    }
+
+    return module.exports.getReactionsByPost(postId, userId);
+};
