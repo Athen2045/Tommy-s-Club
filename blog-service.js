@@ -235,3 +235,11 @@ module.exports.updateProfileStatus = async (userId, status) => {
         .eq('id', userId);
     if (error) throw new Error('unable to update profile status');
 };
+
+module.exports.acceptTerms = async (userId) => {
+    const { error } = await supabase
+        .from('profiles')
+        .update({ terms_accepted: true })
+        .eq('id', userId);
+    if (error) throw new Error('unable to accept terms');
+};

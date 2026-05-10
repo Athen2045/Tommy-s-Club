@@ -1,0 +1,42 @@
+<div class="gate-wrap">
+    <div class="gate-ring-wrap">
+        <div class="gate-ring gate-ring--sm">
+            <div class="gate-ring-inner">
+                <div class="gate-logo-text" aria-label="Club9">
+                    <span>C</span><span>L</span><span>U</span><span>B</span><span>9</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="gate-form-wrap">
+        <h2 class="status-gate-heading mb-1">MEMBERSHIP RULES</h2>
+        <p class="status-gate-body mb-4">Read carefully. You agree once.</p>
+
+        {{#if errorMessage}}
+        <p class="gate-error">{{errorMessage}}</p>
+        {{/if}}
+
+        <form method="POST" action="/terms" class="gate-form">
+            <div class="terms-rules">
+                <ol>
+                    <li>Anonymity is mutual &mdash; never attempt to identify or expose another member.</li>
+                    <li>No harassment, hate speech, threats, or targeted abuse of any kind.</li>
+                    <li>The admin may remove any member or content at any time, for any reason.</li>
+                    <li>What is shared in Club9 stays in Club9 &mdash; do not screenshot or repost elsewhere.</li>
+                    <li>You are responsible for everything posted under your alias.</li>
+                </ol>
+            </div>
+
+            <label class="terms-check-label">
+                <input type="checkbox" name="agreed" value="1" id="agreedBox"
+                    onchange="document.getElementById('termsBtn').disabled = !this.checked">
+                I have read and agree to the Club9 rules
+            </label>
+
+            <button type="submit" class="gate-btn mt-3" id="termsBtn" disabled>
+                ENTER CLUB9
+            </button>
+        </form>
+    </div>
+</div>

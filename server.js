@@ -272,6 +272,27 @@ app.get('/auth/refresh-status', async (req, res) => {
     return res.redirect('/pending');
 });
 
+// ── Routes: terms ─────────────────────────────────────────
+
+app.get('/terms', (req, res) => {
+    if (!req.session.user) return res.redirect('/login');
+    if (req.session.user.terms_accepted) return res.redirect('/blog');
+    res.render('terms', GATE);
+});
+
+app.post('/terms', ensureLogin, async (req, res) => {
+    if (!req.body.agreed) {
+        return res.render('terms', { ...GATE, errorMessage: 'You must agree to the rules to continue.' });
+    }
+    try {
+        await blogService.acceptTerms(req.session.user.id);
+        req.session.user.terms_accepted = true;
+        res.redirect('/blog');
+    } catch (err) {
+        res.render('terms', { ...GATE, errorMessage: err.message });
+    }
+});
+
 // ── Routes: profile ───────────────────────────────────────
 
 app.get('/profile', ensureLogin, async (req, res) => {
