@@ -373,6 +373,16 @@ app.post('/posts/add', ensureLogin, upload.single('featureImage'), async (req, r
     }
 });
 
+app.post('/posts/upload-image', ensureLogin, upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file provided' });
+        const result = await streamUpload(req, 'posts');
+        res.json({ url: result.url });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/posts/delete/:id', ensureLogin, async (req, res) => {
     try {
         await blogService.deletePostById(req.params.id);
