@@ -8,18 +8,10 @@
             </a>
             {{/if}}
             <h1 class="post-title">{{post.title}}</h1>
-            <div class="post-meta mb-4">
-                <div class="meta-author">
-                    {{#if post.profiles.avatar_url}}
-                    <img src="{{post.profiles.avatar_url}}" class="meta-avatar" alt="author">
-                    {{else}}
-                    <span class="meta-avatar-initials">{{avatarInitial post.profiles.username}}</span>
-                    {{/if}}
-                    <div>
-                        <div class="fw-medium"><a href="/member/{{post.profiles.username}}" class="fw-medium text-decoration-none text-body member-link">{{post.profiles.username}}</a></div>
-                        <div class="text-muted small">{{formatDate post.created_at}} · {{readTime post.body}}</div>
-                    </div>
-                </div>
+            <div class="post-meta mb-4" style="font-family:var(--font-mono);font-size:.78rem;color:rgba(149,128,255,0.55);">
+                author::<a href="/member/{{post.profiles.username}}" class="text-decoration-none member-link" style="color:rgba(149,128,255,0.7);">{{post.profiles.username}}</a>
+                &nbsp;&middot;&nbsp;{{formatDate post.created_at}}
+                &nbsp;&middot;&nbsp;{{readTime post.body}}
             </div>
         </div>
     </header>
@@ -210,8 +202,8 @@
     var bar   = document.getElementById('reactionBar');
     if (!bar) return;
     var postId      = bar.dataset.postId;
-    var counts      = JSON.parse('{{reactionCounts}}');
-    var userReacted = JSON.parse('{{userReactions}}');
+    var counts      = {{{reactionCounts}}};
+    var userReacted = {{{userReactions}}};
 
     function renderBar() {
         bar.textContent = '';
