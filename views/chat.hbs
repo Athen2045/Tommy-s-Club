@@ -58,7 +58,7 @@
     var CURRENT_USER_ID   = '{{currentUserId}}';
     var CURRENT_USERNAME  = '{{currentUsername}}';
     var IS_ADMIN          = {{#if isAdmin}}true{{else}}false{{/if}};
-    var members           = JSON.parse('{{membersJson}}');
+    var members           = {{{membersJson}}};
 
     var sbClient  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     var container = document.getElementById('chatMessages');
