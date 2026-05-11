@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="bg-f" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2C2C2E"/>
+      <stop offset="100%" stop-color="#1C1C1E"/>
+    </radialGradient>
+    <radialGradient id="glow-f" cx="50%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#A78BFA" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="50" cy="50" r="50" fill="url(#bg-f)"/>
+  <circle cx="50" cy="50" r="50" fill="url(#glow-f)"/>
+  <!-- Outer ring accent -->
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#A78BFA" stroke-width="0.8" opacity="0.4"/>
+  <!-- Body / shoulders -->
+  <path d="M8 100 C8 70 26 58 50 58 C74 58 92 70 92 100Z" fill="#3A3A3C"/>
+  <!-- Neck -->
+  <rect x="44" y="44" width="12" height="16" rx="5" fill="#48484A"/>
+  <!-- Head -->
+  <ellipse cx="50" cy="34" rx="16" ry="17" fill="#48484A"/>
+  <!-- Hair / veil top -->
+  <path d="M34 28 C34 28 33 16 50 15 C67 16 66 28 66 28 C66 28 63 22 50 22 C37 22 34 28 34 28Z" fill="#2C2C2E" opacity="0.8"/>
+  <!-- Hair sides -->
+  <path d="M34 28 C30 32 29 40 30 50 C32 46 33 40 34 38Z" fill="#2C2C2E" opacity="0.6"/>
+  <path d="M66 28 C70 32 71 40 70 50 C68 46 67 40 66 38Z" fill="#2C2C2E" opacity="0.6"/>
+  <!-- Face shadow -->
+  <ellipse cx="50" cy="36" rx="9" ry="7" fill="#3A3A3C" opacity="0.4"/>
+  <!-- Eyes glow -->
+  <ellipse cx="44" cy="34" rx="2.2" ry="1.6" fill="#A78BFA" opacity="0.75"/>
+  <ellipse cx="56" cy="34" rx="2.2" ry="1.6" fill="#A78BFA" opacity="0.75"/>
+  <!-- Subtle veil shimmer -->
+  <path d="M50 15 L47 22 L50 20 L53 22 Z" fill="#A78BFA" opacity="0.15"/>
+</svg>

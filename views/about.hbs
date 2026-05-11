@@ -1,0 +1,68 @@
+<section class="about-hero">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="about-avatar-wrap mb-4">
+                    <span class="about-avatar-initials">C9</span>
+                </div>
+                <h1 class="about-name">Club9</h1>
+                <p class="about-tagline">Exclusive · Anonymous · Invite-Only</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="about-content">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <div class="about-prose">
+                    <p class="lead">Club9 is a private space for a carefully chosen circle — a place to write freely, think openly, and connect without the noise of the public internet.</p>
+
+                    <p>Membership is limited by design. This isn't a platform built for scale — it's built for depth. Every voice here was let in intentionally, and that makes all the difference.</p>
+
+                    <p>Anonymity is a first-class feature. You choose your alias, your avatar, your presence. What matters is what you write, not who the world thinks you are.</p>
+
+                    <h3 class="mt-5 mb-3">What happens here</h3>
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <div class="about-topic-card">
+                                <i class="bi bi-pencil-square"></i>
+                                <span>Thoughts &amp; Writing</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="about-topic-card">
+                                <i class="bi bi-eye-slash"></i>
+                                <span>Anonymous Identities</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="about-topic-card">
+                                <i class="bi bi-shield-lock"></i>
+                                <span>Private by Default</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="about-topic-card">
+                                <i class="bi bi-stars"></i>
+                                <span>Curated Members</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="about-cta">
+                        <a href="/blog" class="btn btn-primary rounded-pill px-4 me-2">
+                            <i class="bi bi-journal-text me-2"></i>Read the posts
+                        </a>
+                        {{#unless session.user}}
+                        <a href="/register" class="btn btn-outline-secondary rounded-pill px-4">
+                            Request access
+                        </a>
+                        {{/unless}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

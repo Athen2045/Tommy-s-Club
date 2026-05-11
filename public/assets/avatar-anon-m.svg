@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="bg-m" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2C2C2E"/>
+      <stop offset="100%" stop-color="#1C1C1E"/>
+    </radialGradient>
+    <radialGradient id="glow-m" cx="50%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="#6366F1" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Background -->
+  <circle cx="50" cy="50" r="50" fill="url(#bg-m)"/>
+  <circle cx="50" cy="50" r="50" fill="url(#glow-m)"/>
+  <!-- Outer ring accent -->
+  <circle cx="50" cy="50" r="48" fill="none" stroke="#6366F1" stroke-width="0.8" opacity="0.35"/>
+  <!-- Body / shoulders -->
+  <path d="M10 100 C10 72 28 60 50 60 C72 60 90 72 90 100Z" fill="#3A3A3C"/>
+  <!-- Neck -->
+  <rect x="44" y="46" width="12" height="16" rx="4" fill="#48484A"/>
+  <!-- Head -->
+  <circle cx="50" cy="36" r="17" fill="#48484A"/>
+  <!-- Hood / mask overlay -->
+  <path d="M33 30 C33 30 33 18 50 18 C67 18 67 30 67 30 C67 30 62 26 50 26 C38 26 33 30 33 30Z" fill="#2C2C2E" opacity="0.7"/>
+  <!-- Face shadow -->
+  <ellipse cx="50" cy="38" rx="10" ry="8" fill="#3A3A3C" opacity="0.5"/>
+  <!-- Eyes glow -->
+  <circle cx="44" cy="36" r="2" fill="#6366F1" opacity="0.7"/>
+  <circle cx="56" cy="36" r="2" fill="#6366F1" opacity="0.7"/>
+</svg>
