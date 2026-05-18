@@ -284,12 +284,15 @@ button { cursor: pointer; }
     justify-content: center;
     gap: 28px;
     z-index: 5;
+    pointer-events: none;
+    /* shift sign up — leaves bottom 280px clear for login form */
+    padding-bottom: 280px;
 }
 
 .boot-dots {
     display: flex;
     gap: 10px;
-    animation: boot-dots-group 16s ease-in-out infinite;
+    animation: boot-dots-group 4.5s ease-in-out 1 both;
 }
 
 .boot-dot {
@@ -299,9 +302,9 @@ button { cursor: pointer; }
     box-shadow: 0 0 6px var(--neon-cyan);
 }
 
-.boot-dot:nth-child(1) { animation: boot-dot-blink 16s 0.0s ease-in-out infinite; }
-.boot-dot:nth-child(2) { animation: boot-dot-blink 16s 0.35s ease-in-out infinite; }
-.boot-dot:nth-child(3) { animation: boot-dot-blink 16s 0.7s ease-in-out infinite; }
+.boot-dot:nth-child(1) { animation: boot-dot-blink 4.5s 0.0s ease-in-out 1 both; }
+.boot-dot:nth-child(2) { animation: boot-dot-blink 4.5s 0.35s ease-in-out 1 both; }
+.boot-dot:nth-child(3) { animation: boot-dot-blink 4.5s 0.7s ease-in-out 1 both; }
 
 @keyframes boot-dot-blink {
     0%    { opacity: 0; transform: scale(0); }
@@ -324,7 +327,7 @@ button { cursor: pointer; }
     letter-spacing: 0.12em;
     text-align: center;
     padding: 0 20px;
-    animation: boot-text-in 16s ease-out infinite;
+    animation: boot-text-in 4.5s ease-out 1 both;
 }
 
 @keyframes boot-text-in {
@@ -336,7 +339,7 @@ button { cursor: pointer; }
 }
 
 .boot-sign-wrap {
-    animation: boot-sign-in 16s ease-out infinite;
+    animation: boot-sign-in 4.5s ease-out 1 both;
 }
 
 @keyframes boot-sign-in {
@@ -356,7 +359,9 @@ button { cursor: pointer; }
     left: 50%;
     transform: translateX(-50%);
     width: 310px;
-    animation: boot-login-in 16s ease-out infinite;
+    pointer-events: auto;
+    z-index: 6;
+    animation: boot-login-in 4.5s ease-out 1 both;
 }
 
 @keyframes boot-login-in {
@@ -688,6 +693,11 @@ a.crt-nav-link:hover {
     margin-left: auto;
 }
 
+/* Dropdown anchor — must be positioned so the menu's absolute coords are relative to it */
+.crt-topbar-end .dropdown {
+    position: relative;
+}
+
 .crt-hamburger {
     background: none;
     border: 1px solid var(--ink-ghost);
@@ -848,12 +858,22 @@ a.crt-sidebar-link:hover {
 
 /* Bootstrap dropdown overrides */
 .dropdown-menu {
+    /* Kill Popper's viewport-relative transform — keep it inside the CRT frame */
+    transform: none !important;
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    right: 0 !important;
+    left: auto !important;
+    /* Appearance */
     background: var(--crt-screen-bg) !important;
     border: 1px dashed var(--ink-ghost) !important;
     border-radius: 0 !important;
     min-width: 180px;
     box-shadow: 0 8px 28px rgba(0,0,0,0.7) !important;
     padding: 4px 0 !important;
+    /* Remove browser default list styles */
+    list-style: none !important;
+    margin: 0 !important;
 }
 .dropdown-item {
     color: var(--ink-dim) !important;
@@ -2076,3 +2096,56 @@ textarea.wf-input { min-height: 100px; resize: vertical; }
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .overflow-hidden { overflow: hidden; }
+
+/* ── MOBILE RESPONSIVE ──────────────────────────────────────── */
+@media (max-width: 640px) {
+    /* Fill the full viewport — no bezel chrome on small screens */
+    .crt {
+        padding: 0;
+        background: var(--crt-screen-bg);
+    }
+    .crt-screen {
+        max-width: 100%;
+        height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .crt-led { display: none; }
+
+    /* Hide topbar text nav — hamburger is the only nav affordance */
+    .crt-topbar-nav { display: none !important; }
+
+    /* Tighter topbar */
+    .crt-topbar { padding: 8px 12px; gap: 8px; }
+    .crt-brand  { font-size: 20px; }
+
+    /* Tighter main content padding */
+    .crt-main { padding: 12px 14px; }
+
+    /* Boot login form: full width on small screens */
+    .boot-login { width: calc(100% - 32px); }
+
+    /* Blog: single column post grid */
+    .post-grid { grid-template-columns: 1fr; }
+
+    /* Blog hero: tighter headline */
+    .blog-hero-title { font-size: 32px; letter-spacing: 2px; }
+
+    /* Admin header: stack vertically */
+    .admin-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+
+    /* About feature grid: single column */
+    .feature-grid { grid-template-columns: 1fr; }
+
+    /* Tables: allow horizontal scroll */
+    .crt-table { font-size: 11px; }
+
+    /* Error page number */
+    .error-number { font-size: 80px; }
+
+    /* Filter row: allow wrap */
+    .filter-row { gap: 6px; }
+
+    /* Mac chat sidebar: collapse on mobile */
+    .mac-sidebar { width: 100px; }
+}

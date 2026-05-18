@@ -23,7 +23,7 @@
 
                 <a class="crt-brand" href="/blog">Tommy's <span>CLUB</span></a>
 
-                <nav class="crt-topbar-nav d-none d-md-flex">
+                <nav class="crt-topbar-nav">
                     {{#navLink "/blog"}}Blog{{/navLink}}
                     {{#navLink "/about"}}About{{/navLink}}
                 </nav>
@@ -35,7 +35,7 @@
 
                     <!-- Bootstrap dropdown for user menu -->
                     <div class="dropdown">
-                        <button class="crt-avatar-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="crt-avatar-btn" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                             {{#if session.user.avatar_url}}
                             <img src="{{session.user.avatar_url}}" alt="avatar">
                             {{else}}
