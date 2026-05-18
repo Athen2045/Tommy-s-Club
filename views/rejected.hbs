@@ -1,30 +1,17 @@
-<div class="gate-wrap">
-    <div class="ctos-emblem-wrap">
-        <div class="ctos-emblem ctos-emblem-sm">
-            <svg class="ctos-outer-hex" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="60,4 110,32 110,88 60,116 10,88 10,32"
-                    stroke="#00d4ff" stroke-width="1" stroke-dasharray="5 3" opacity="0.5"/>
-            </svg>
-            <svg class="ctos-inner-hex" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="60,20 96,42 96,78 60,100 24,78 24,42"
-                    stroke="#00d4ff" stroke-width="1.5" opacity="0.3"/>
-            </svg>
-            <div class="ctos-scan-line"></div>
-            <div class="ctos-glyph">C9</div>
-            <div class="ctos-corner ctos-corner-tl"></div>
-            <div class="ctos-corner ctos-corner-tr"></div>
-            <div class="ctos-corner ctos-corner-bl"></div>
-            <div class="ctos-corner ctos-corner-br"></div>
-            <div class="ctos-hud-label">CLUB.9 · ACCESS</div>
-        </div>
+<div class="brick-wall" style="opacity:0.5"></div>
+
+<div class="fill center" style="flex-direction:column;gap:22px;z-index:5;padding:30px">
+    <div class="neon-sign-stack sm">
+        <div class="neon-tommys">Tommy's</div>
+        <div class="neon-club">CLUB</div>
     </div>
-    <div class="gate-form-wrap">
-        <div class="status-gate-icon">&#x1F6AB;</div>
-        <h2 class="status-gate-heading">ACCESS DENIED</h2>
-        <p class="status-gate-body">
-            Your membership request was not approved.<br>
-            Club9 membership is by discretion only.
-        </p>
-        <a href="/logout" class="gate-btn mt-3">SIGN OUT</a>
+
+    <div class="status-heading red">&#x1F6AB; ACCESS DENIED</div>
+
+    <div class="status-body">
+        Your membership request was not approved.<br>
+        Club9 membership is by discretion only.
     </div>
+
+    <a href="/logout" class="gate-btn">&#x25B8; SIGN OUT</a>
 </div>

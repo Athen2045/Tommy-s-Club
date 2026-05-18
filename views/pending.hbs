@@ -1,35 +1,27 @@
-<div class="gate-wrap">
-    <div class="ctos-emblem-wrap">
-        <div class="ctos-emblem ctos-emblem-sm">
-            <svg class="ctos-outer-hex" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="60,4 110,32 110,88 60,116 10,88 10,32"
-                    stroke="#00d4ff" stroke-width="1" stroke-dasharray="5 3" opacity="0.5"/>
-            </svg>
-            <svg class="ctos-inner-hex" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="60,20 96,42 96,78 60,100 24,78 24,42"
-                    stroke="#00d4ff" stroke-width="1.5" opacity="0.3"/>
-            </svg>
-            <div class="ctos-scan-line"></div>
-            <div class="ctos-glyph">C9</div>
-            <div class="ctos-corner ctos-corner-tl"></div>
-            <div class="ctos-corner ctos-corner-tr"></div>
-            <div class="ctos-corner ctos-corner-bl"></div>
-            <div class="ctos-corner ctos-corner-br"></div>
-            <div class="ctos-hud-label">CLUB.9 · ACCESS</div>
-        </div>
+<div class="brick-wall" style="opacity:0.5"></div>
+
+<div class="fill center" style="flex-direction:column;gap:22px;z-index:5;padding:30px">
+    <div class="neon-sign-stack sm">
+        <div class="neon-tommys">Tommy's</div>
+        <div class="neon-club">CLUB</div>
     </div>
-    <div class="gate-form-wrap">
-        <div class="status-gate-icon">&#x23F3;</div>
-        <h2 class="status-gate-heading">APPLICATION PENDING</h2>
-        <p class="status-gate-body">
-            Your membership request has been received.<br>
-            You will gain access once it has been reviewed.<br>
-            This usually takes less than 24 hours.
-        </p>
-        <a href="/auth/refresh-status" class="gate-btn mt-3">CHECK AGAIN</a>
-        <p class="gate-switch mt-3">
-            Signed in as <strong>{{session.user.username}}</strong>
-            &middot; <a href="/logout">Sign out</a>
-        </p>
+
+    <div class="status-icon">&#x23F3;</div>
+
+    <div class="status-heading amber">&#x23F3; PENDING</div>
+
+    <div class="status-body">
+        The boss is looking you over.
     </div>
+    <div class="status-body-sub">
+        Usually less than 24 hours.<br>
+        Don't call us, we'll call you.
+    </div>
+
+    <a href="/auth/refresh-status" class="gate-btn ghost">&#x25B8; Refresh Status</a>
+
+    <p class="status-foot">
+        Logged in as <span style="color:var(--neon-cyan)">{{session.user.username}}</span>
+        &middot; <a href="/logout">sign out</a>
+    </p>
 </div>

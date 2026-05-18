@@ -1,52 +1,106 @@
-<div class="chat-layout">
+<script>
+// Activate Mac System 1 mode
+(function () {
+    var screen = document.getElementById('crtScreen');
+    var main   = document.getElementById('crtMain');
+    if (screen) screen.classList.add('mac-screen');
+    if (main) {
+        main.style.padding         = '0';
+        main.style.overflow        = 'hidden';
+        main.style.display         = 'flex';
+        main.style.flexDirection   = 'column';
+    }
+})();
+</script>
 
-    <div class="chat-header">
-        <div class="chat-header-inner">
-            <span class="chat-header-icon">&#x1F4AC;</span>
-            <div>
-                <div class="chat-header-title">The Room</div>
-                <div class="chat-header-sub">Club9 &middot; members only</div>
-            </div>
-        </div>
+<div class="mac-chat-wrap">
+
+    <!-- Mac System 1 Menu bar -->
+    <div class="mac-menubar">
+        <span class="mac-menu-item mac-apple">&#x1F34E;</span>
+        <span class="mac-menu-item active">Tommy's Club</span>
+        <span class="mac-menu-item">Members</span>
+        <span class="mac-menu-item">View</span>
+        <span class="mac-menu-item" style="margin-left:auto">
+            <a href="/blog" style="color:inherit;font-size:11px">&#x2190; Vault</a>
+        </span>
     </div>
 
-    <div class="chat-messages" id="chatMessages">
-        {{#each messages}}
-        <div class="chat-msg" data-id="{{id}}" data-author="{{author_id}}">
-            <div class="chat-msg-avatar">
-                {{#if profiles.avatar_url}}
-                <img src="{{profiles.avatar_url}}" alt="" class="chat-avatar-img">
-                {{else}}
-                <span class="chat-avatar-initials">{{avatarInitial profiles.username}}</span>
-                {{/if}}
+    <div class="mac-window-wrap">
+        <!-- Titlebar -->
+        <div class="mac-titlebar">
+            <div class="mac-close-box">&#x25A0;</div>
+            <span class="mac-title-text">The Room &mdash; Club9</span>
+        </div>
+
+        <!-- Chat split layout -->
+        <div class="mac-chat-split">
+
+            <!-- Members sidebar -->
+            <div class="mac-sidebar">
+                <div class="mac-sidebar-header"></div>
+                <div id="membersList" style="overflow-y:auto;flex:1"></div>
             </div>
-            <div class="chat-msg-content">
-                <div class="chat-msg-meta">
-                    <a href="/member/{{profiles.username}}" class="chat-msg-author">{{profiles.username}}</a>
-                    <span class="chat-msg-time" data-ts="{{created_at}}"></span>
+
+            <!-- Main chat area -->
+            <div class="mac-chat-main">
+
+                <!-- Messages -->
+                <div class="mac-messages" id="chatMessages">
+                    {{#each messages}}
+                    <div class="chat-msg" data-id="{{id}}" data-author="{{author_id}}">
+                        <div class="chat-msg-avatar">
+                            {{#if profiles.avatar_url}}
+                            <img src="{{profiles.avatar_url}}" alt="" class="chat-avatar-img">
+                            {{else}}
+                            <span class="chat-avatar-initials">{{avatarInitial profiles.username}}</span>
+                            {{/if}}
+                        </div>
+                        <div class="chat-msg-content">
+                            <div class="chat-msg-meta">
+                                <a href="/member/{{profiles.username}}" class="chat-msg-author">{{profiles.username}}</a>
+                                <span class="chat-msg-time" data-ts="{{created_at}}"></span>
+                            </div>
+                            <div class="chat-msg-body" data-raw="{{body}}"></div>
+                        </div>
+                        <button class="chat-delete-btn" data-msgid="{{id}}" title="Delete message" type="button">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    {{/each}}
                 </div>
-                <div class="chat-msg-body" data-raw="{{body}}"></div>
+
+                <!-- Mention dropdown -->
+                <div class="mention-dropdown" id="mentionDropdown"></div>
+
+                <!-- Input row -->
+                <div class="mac-chat-input-row">
+                    <textarea id="chatInput" class="chat-input"
+                        placeholder="Message the room&#x2026; @ to mention"
+                        rows="1" maxlength="2000"></textarea>
+                    <button class="mac-send-btn" id="chatSendBtn" type="button">SEND</button>
+                </div>
+
             </div>
-            <button class="chat-delete-btn" data-msgid="{{id}}" title="Delete message">
-                <i class="bi bi-trash"></i>
-            </button>
         </div>
-        {{/each}}
-    </div>
-
-    <div class="mention-dropdown" id="mentionDropdown"></div>
-
-    <div class="chat-input-bar">
-        <div class="chat-input-wrap">
-            <textarea id="chatInput" class="chat-input"
-                placeholder="Message the room&#x2026; type @ to mention"
-                rows="1" maxlength="2000"></textarea>
-        </div>
-        <button class="chat-send-btn" id="chatSendBtn" type="button">
-            <i class="bi bi-send-fill"></i>
-        </button>
     </div>
 </div>
+
+<!-- Render members in sidebar -->
+<script>
+(function () {
+    var members = {{{membersJson}}};
+    var list = document.getElementById('membersList');
+    if (list && members) {
+        members.forEach(function (name) {
+            var item = document.createElement('div');
+            item.className = 'mac-member-item';
+            item.textContent = name;
+            list.appendChild(item);
+        });
+    }
+})();
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -96,7 +150,7 @@
 
     function autoResize() {
         inputEl.style.height = 'auto';
-        inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+        inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + 'px';
     }
 
     // ── Render body text with @mention links (XSS-safe) ──
@@ -177,7 +231,6 @@
         outer.appendChild(contentDiv);
 
         if (canDel) {
-            // Safe: static icon markup, no user data
             var delBtn = document.createElement('button');
             delBtn.className = 'chat-delete-btn';
             delBtn.title     = 'Delete message';

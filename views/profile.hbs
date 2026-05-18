@@ -1,58 +1,49 @@
-<div class="admin-page">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-7">
-                <h1 class="admin-title mb-1">Your Profile</h1>
-                <p class="text-muted mb-5">Update your public information</p>
+<div class="admin-header">
+    <div>
+        <h1 class="admin-title">Your Profile</h1>
+        <p class="admin-sub">Update your public information</p>
+    </div>
+</div>
 
-                {{#if successMessage}}
-                <div class="alert alert-success d-flex gap-2 border-0 rounded-3 mb-4">
-                    <i class="bi bi-check-circle-fill flex-shrink-0"></i>
-                    {{successMessage}}
-                </div>
-                {{/if}}
-                {{#if errorMessage}}
-                <div class="alert alert-danger d-flex gap-2 border-0 rounded-3 mb-4">
-                    <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-                    {{errorMessage}}
-                </div>
-                {{/if}}
+{{#if successMessage}}
+<div class="gate-success mb-3" style="max-width:500px">{{successMessage}}</div>
+{{/if}}
+{{#if errorMessage}}
+<div class="gate-error mb-3" style="max-width:500px">{{errorMessage}}</div>
+{{/if}}
 
-                <div class="auth-card">
-                    <!-- Current avatar preview -->
-                    <div class="d-flex align-items-center gap-4 mb-5">
-                        {{#if profile.avatar_url}}
-                        <img src="{{profile.avatar_url}}" class="profile-avatar" alt="avatar" id="avatarPreview">
-                        {{else}}
-                        <span class="profile-avatar-initials" id="avatarPreview">{{avatarInitial profile.username}}</span>
-                        {{/if}}
-                        <div>
-                            <div class="fw-semibold">{{profile.username}}</div>
-                            <div class="text-muted small">{{session.user.email}}</div>
-                        </div>
-                    </div>
-
-                    <form method="POST" action="/profile" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label class="form-label fw-medium" for="username">Username</label>
-                            <input type="text" class="form-control" id="username" name="username"
-                                value="{{profile.username}}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-medium" for="bio">Bio</label>
-                            <textarea class="form-control" id="bio" name="bio" rows="3"
-                                placeholder="A little about you…">{{profile.bio}}</textarea>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-medium" for="avatar">Profile picture</label>
-                            <input type="file" class="form-control" id="avatar" name="avatar" accept="image/*">
-                        </div>
-                        <button type="submit" class="btn btn-primary rounded-pill px-5">
-                            Save changes
-                        </button>
-                    </form>
-                </div>
-            </div>
+<div style="max-width:500px">
+    <!-- Avatar preview -->
+    <div class="profile-header mb-3" style="margin-bottom:20px">
+        {{#if profile.avatar_url}}
+        <img src="{{profile.avatar_url}}" class="profile-avatar" alt="avatar" id="avatarPreview">
+        {{else}}
+        <div class="profile-avatar-placeholder" id="avatarPreview">{{avatarInitial profile.username}}</div>
+        {{/if}}
+        <div>
+            <div class="profile-username">{{profile.username}}</div>
+            <div class="profile-since">{{session.user.email}}</div>
         </div>
     </div>
+
+    <form method="POST" action="/profile" enctype="multipart/form-data" class="wf-stack" style="gap:16px">
+        <div class="gate-field">
+            <label class="gate-label">Username</label>
+            <input type="text" class="gate-input" name="username"
+                value="{{profile.username}}" required>
+        </div>
+        <div class="gate-field">
+            <label class="gate-label">Bio</label>
+            <textarea class="gate-input" name="bio" rows="3"
+                placeholder="A little about you…">{{profile.bio}}</textarea>
+        </div>
+        <div class="gate-field">
+            <label class="gate-label">Profile Picture</label>
+            <input type="file" class="gate-input" name="avatar" accept="image/*"
+                style="padding:6px 12px;cursor:pointer">
+        </div>
+        <button type="submit" class="gate-btn" style="width:auto;padding:10px 28px;display:inline-block">
+            &#x25B8; Save Changes
+        </button>
+    </form>
 </div>

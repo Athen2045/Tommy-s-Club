@@ -1,198 +1,174 @@
-<article class="single-post">
-    <!-- Post header -->
-    <header class="post-header">
-        <div class="container post-container">
-            {{#if post.categories}}
-            <a href="/blog?category={{post.categories.id}}" class="category-badge mb-3 d-inline-block">
-                {{post.categories.name}}
-            </a>
-            {{/if}}
-            <h1 class="post-title">{{post.title}}</h1>
-            <div class="post-meta mb-4" style="font-family:var(--font-mono);font-size:.78rem;color:rgba(149,128,255,0.55);">
-                author::<a href="/member/{{post.profiles.username}}" class="text-decoration-none member-link" style="color:rgba(149,128,255,0.7);">{{post.profiles.username}}</a>
-                &nbsp;&middot;&nbsp;{{formatDate post.created_at}}
-                &nbsp;&middot;&nbsp;{{readTime post.body}}
-            </div>
-        </div>
-    </header>
+<div class="post-view">
+
+    <!-- Back link -->
+    <a href="/blog" class="post-view-back">&#x2190; Back to The Vault</a>
+
+    <!-- Category -->
+    {{#if post.categories}}
+    <div class="post-view-cat">{{post.categories.name}}</div>
+    {{/if}}
+
+    <!-- Title -->
+    <h1 class="post-view-title">{{post.title}}</h1>
+
+    <!-- Meta -->
+    <div class="post-view-meta">
+        <a href="/member/{{post.profiles.username}}">{{post.profiles.username}}</a>
+        <span class="sep">&middot;</span>
+        <span>{{formatDate post.created_at}}</span>
+        <span class="sep">&middot;</span>
+        <span>{{readTime post.body}}</span>
+        <span class="sep">&middot;</span>
+        <span>{{commentCount}} comment{{#gt commentCount 1}}s{{/gt}}</span>
+    </div>
 
     <!-- Feature image -->
     {{#if post.feature_image}}
-    <div class="post-feature-image-wrap">
-        <div class="container post-container">
-            <img src="{{post.feature_image}}" alt="{{post.title}}" class="post-feature-image">
+    <img src="{{post.feature_image}}" alt="{{post.title}}" class="post-view-img">
+    {{/if}}
+
+    <!-- Body -->
+    <div class="post-view-body">
+        {{{safeHTML post.body}}}
+    </div>
+
+    <!-- Reactions -->
+    <div class="reaction-bar" id="reactionBar" data-post-id="{{post.id}}"></div>
+
+</div>
+
+<!-- Comments -->
+<section class="comments-section" id="comments" style="max-width:700px">
+
+    <h3 class="comments-heading">
+        &#x1F4AC; {{commentCount}} Comment{{#gt commentCount 1}}s{{/gt}}
+    </h3>
+
+    <!-- New comment form -->
+    {{#if session.user}}
+    <div class="comment-form-card">
+        <div class="meta-avatar">
+            {{#if session.user.avatar_url}}
+            <img src="{{session.user.avatar_url}}" alt="you">
+            {{else}}
+            <span class="meta-avatar-initials">{{avatarInitial session.user.username}}</span>
+            {{/if}}
         </div>
+        <form method="POST" action="/blog/{{post.id}}/comments" style="flex:1">
+            <textarea name="body" class="comment-textarea" rows="3"
+                placeholder="Share your thoughts…" required></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px">
+                <button type="submit" class="comment-submit-btn">&#x25B8; Post comment</button>
+            </div>
+        </form>
+    </div>
+    {{else}}
+    <div class="comment-cta">
+        <a href="/login">Sign in</a> or <a href="/register">create an account</a> to join the conversation.
     </div>
     {{/if}}
 
-    <!-- Post body -->
-    <div class="container post-container">
-        <div class="post-body">
-            {{{safeHTML post.body}}}
-        </div>
-
-        <!-- Reaction bar -->
-        <div class="reaction-bar" id="reactionBar" data-post-id="{{post.id}}"></div>
-
-        <!-- Tags row -->
-        <div class="post-footer-row">
-            <a href="/blog" class="btn btn-outline-secondary btn-sm rounded-pill">
-                <i class="bi bi-arrow-left me-1"></i>Back to blog
-            </a>
-            <span class="text-muted small">{{commentCount}} comment{{#gt commentCount 1}}s{{/gt}}</span>
-        </div>
-    </div>
-</article>
-
-<!-- Comments Section -->
-<section class="comments-section" id="comments">
-    <div class="container post-container">
-        <h3 class="comments-heading">
-            <i class="bi bi-chat-square-text me-2"></i>
-            {{commentCount}} Comment{{#gt commentCount 1}}s{{/gt}}
-        </h3>
-
-        <!-- New comment form -->
-        {{#if session.user}}
-        <div class="comment-form-card mb-5">
-            <div class="d-flex gap-3">
-                <div class="flex-shrink-0">
-                    {{#if session.user.avatar_url}}
-                    <img src="{{session.user.avatar_url}}" class="meta-avatar" alt="you">
-                    {{else}}
-                    <span class="meta-avatar-initials">{{avatarInitial session.user.username}}</span>
-                    {{/if}}
-                </div>
-                <form method="POST" action="/blog/{{post.id}}/comments" class="flex-grow-1">
-                    <textarea name="body" class="form-control comment-textarea" rows="3"
-                        placeholder="Share your thoughts…" required></textarea>
-                    <div class="d-flex justify-content-end mt-2">
-                        <button type="submit" class="btn btn-primary rounded-pill px-4 btn-sm">
-                            Post comment
-                        </button>
-                    </div>
-                </form>
+    <!-- Comment thread -->
+    {{#if commentTree}}
+    <div class="comment-list">
+        {{#each commentTree}}
+        <div class="comment-item" id="comment-{{id}}">
+            <div class="meta-avatar">
+                {{#if profiles.avatar_url}}
+                <img src="{{profiles.avatar_url}}" alt="">
+                {{else}}
+                <span class="meta-avatar-initials">{{avatarInitial profiles.username}}</span>
+                {{/if}}
             </div>
-        </div>
-        {{else}}
-        <div class="comment-cta">
-            <p class="mb-0">
-                <a href="/login">Sign in</a> or <a href="/register">create an account</a> to join the conversation.
-            </p>
-        </div>
-        {{/if}}
+            <div style="flex:1">
+                <div class="comment-meta">
+                    <a href="/member/{{profiles.username}}" class="comment-author">{{profiles.username}}</a>
+                    <span class="comment-date">{{timeAgo created_at}}</span>
+                </div>
+                <p class="comment-body">{{body}}</p>
+                <div class="comment-actions">
+                    {{#if ../session.user}}
+                    <button class="reply-toggle" data-id="{{id}}">&#x21B5; Reply</button>
+                    {{/if}}
+                    {{#equal ../session.user.id author_id}}
+                    <a href="/comments/delete/{{id}}?post={{../post.id}}"
+                        class="comment-delete-link"
+                        onclick="return confirm('Delete this comment?')">Delete</a>
+                    {{/equal}}
+                </div>
 
-        <!-- Comment thread -->
-        {{#if commentTree}}
-        <div class="comment-list">
-            {{#each commentTree}}
-            <div class="comment-item" id="comment-{{id}}">
-                <div class="d-flex gap-3">
-                    <div class="flex-shrink-0">
-                        {{#if profiles.avatar_url}}
-                        <img src="{{profiles.avatar_url}}" class="meta-avatar" alt="author">
-                        {{else}}
-                        <span class="meta-avatar-initials">{{avatarInitial profiles.username}}</span>
-                        {{/if}}
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="comment-meta">
-                            <span class="fw-semibold"><a href="/member/{{profiles.username}}" class="fw-semibold text-decoration-none text-body member-link">{{profiles.username}}</a></span>
-                            <span class="text-muted small ms-2">{{timeAgo created_at}}</span>
+                <!-- Reply form (hidden by default) -->
+                {{#if ../session.user}}
+                <div class="reply-form" id="reply-form-{{id}}" style="display:none">
+                    <form method="POST" action="/blog/{{../post.id}}/comments">
+                        <input type="hidden" name="parent_id" value="{{id}}">
+                        <textarea name="body" class="comment-textarea" rows="2"
+                            placeholder="Write a reply…" required></textarea>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+                            <button type="button" class="cancel-reply" data-id="{{id}}">Cancel</button>
+                            <button type="submit" class="comment-submit-btn">Reply</button>
                         </div>
-                        <p class="comment-body">{{body}}</p>
-                        <div class="comment-actions">
-                            {{#if ../session.user}}
-                            <button class="btn btn-link btn-sm p-0 reply-toggle text-muted"
-                                data-id="{{id}}">
-                                <i class="bi bi-reply me-1"></i>Reply
-                            </button>
+                    </form>
+                </div>
+                {{/if}}
+
+                <!-- Nested replies -->
+                {{#if replies}}
+                <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+                    {{#each replies}}
+                    <div class="comment-item reply-item" id="comment-{{id}}">
+                        <div class="meta-avatar-xs">
+                            {{#if profiles.avatar_url}}
+                            <img src="{{profiles.avatar_url}}" alt="">
+                            {{else}}
+                            <span class="meta-avatar-initials-xs">{{avatarInitial profiles.username}}</span>
                             {{/if}}
-                            {{#equal ../session.user.id author_id}}
-                            <a href="/comments/delete/{{id}}?post={{../post.id}}"
-                                class="btn btn-link btn-sm p-0 text-danger ms-3"
-                                onclick="return confirm('Delete this comment?')">
-                                <i class="bi bi-trash me-1"></i>Delete
-                            </a>
+                        </div>
+                        <div style="flex:1">
+                            <div class="comment-meta">
+                                <a href="/member/{{profiles.username}}" class="comment-author">{{profiles.username}}</a>
+                                <span class="comment-date">{{timeAgo created_at}}</span>
+                            </div>
+                            <p class="comment-body">{{body}}</p>
+                            {{#equal ../../session.user.id author_id}}
+                            <a href="/comments/delete/{{id}}?post={{../../post.id}}"
+                                class="comment-delete-link"
+                                onclick="return confirm('Delete this reply?')">Delete</a>
                             {{/equal}}
                         </div>
-
-                        <!-- Reply form (hidden by default) -->
-                        {{#if ../session.user}}
-                        <div class="reply-form mt-3" id="reply-form-{{id}}" style="display:none">
-                            <form method="POST" action="/blog/{{../post.id}}/comments">
-                                <input type="hidden" name="parent_id" value="{{id}}">
-                                <textarea name="body" class="form-control comment-textarea" rows="2"
-                                    placeholder="Write a reply…" required></textarea>
-                                <div class="d-flex gap-2 justify-content-end mt-2">
-                                    <button type="button" class="btn btn-ghost-sm cancel-reply" data-id="{{id}}">
-                                        Cancel
-                                    </button>
-                                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">
-                                        Reply
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                        {{/if}}
-
-                        <!-- Nested replies -->
-                        {{#if replies}}
-                        <div class="replies-list mt-3">
-                            {{#each replies}}
-                            <div class="comment-item reply-item d-flex gap-3" id="comment-{{id}}">
-                                <div class="flex-shrink-0">
-                                    {{#if profiles.avatar_url}}
-                                    <img src="{{profiles.avatar_url}}" class="meta-avatar-xs" alt="">
-                                    {{else}}
-                                    <span class="meta-avatar-initials-xs">{{avatarInitial profiles.username}}</span>
-                                    {{/if}}
-                                </div>
-                                <div class="flex-grow-1">
-                                    <div class="comment-meta">
-                                        <span class="fw-semibold"><a href="/member/{{profiles.username}}" class="fw-semibold text-decoration-none text-body member-link">{{profiles.username}}</a></span>
-                                        <span class="text-muted small ms-2">{{timeAgo created_at}}</span>
-                                    </div>
-                                    <p class="comment-body mb-1">{{body}}</p>
-                                    {{#equal ../../session.user.id author_id}}
-                                    <a href="/comments/delete/{{id}}?post={{../../post.id}}"
-                                        class="btn btn-link btn-sm p-0 text-danger"
-                                        onclick="return confirm('Delete this reply?')">
-                                        <i class="bi bi-trash me-1"></i>Delete
-                                    </a>
-                                    {{/equal}}
-                                </div>
-                            </div>
-                            {{/each}}
-                        </div>
-                        {{/if}}
                     </div>
+                    {{/each}}
                 </div>
+                {{/if}}
             </div>
-            {{/each}}
         </div>
-        {{else}}
-        <div class="text-center py-4 text-muted">
-            <i class="bi bi-chat display-4 d-block mb-2 opacity-25"></i>
-            No comments yet. Be the first!
-        </div>
-        {{/if}}
+        {{/each}}
     </div>
+    {{else}}
+    <div class="empty-state" style="padding:20px 0">
+        <i class="bi bi-chat"></i>
+        <p>No comments yet. Be the first!</p>
+    </div>
+    {{/if}}
+
 </section>
 
 <script>
-    document.querySelectorAll('.reply-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const form = document.getElementById('reply-form-' + btn.dataset.id);
+document.querySelectorAll('.reply-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var form = document.getElementById('reply-form-' + btn.dataset.id);
+        if (form) {
             form.style.display = form.style.display === 'none' ? 'block' : 'none';
             if (form.style.display === 'block') form.querySelector('textarea').focus();
-        });
+        }
     });
-    document.querySelectorAll('.cancel-reply').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.getElementById('reply-form-' + btn.dataset.id).style.display = 'none';
-        });
+});
+document.querySelectorAll('.cancel-reply').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var form = document.getElementById('reply-form-' + btn.dataset.id);
+        if (form) form.style.display = 'none';
     });
+});
 </script>
 
 <script>

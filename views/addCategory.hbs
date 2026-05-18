@@ -1,31 +1,27 @@
-<div class="admin-page">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-sm-10 col-md-7 col-lg-5">
-                <div class="d-flex align-items-center gap-3 mb-4">
-                    <a href="/categories" class="btn btn-ghost-sm">
-                        <i class="bi bi-arrow-left"></i>
-                    </a>
-                    <h1 class="admin-title mb-0">New Category</h1>
-                </div>
+<div class="wf-row mb-3" style="gap:12px">
+    <a href="/categories" class="wf-btn ghost sm">&#x2190;</a>
+    <h1 class="wf-h2">New Channel</h1>
+</div>
 
-                <div class="auth-card">
-                    <form method="POST" action="/categories/add">
-                        <div class="mb-4">
-                            <label class="form-label fw-medium" for="category">Category name</label>
-                            <input class="form-control form-control-lg" id="category" name="category"
-                                type="text" placeholder="e.g. Technology" autofocus required>
-                            <div class="text-muted small mt-1">A URL-friendly slug will be generated automatically.</div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary rounded-pill px-4">
-                                Create category
-                            </button>
-                            <a href="/categories" class="btn btn-outline-secondary rounded-pill px-4">Cancel</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
+<div style="max-width:400px">
+    {{#if errorMessage}}
+    <div class="gate-error mb-3">{{errorMessage}}</div>
+    {{/if}}
+
+    <form method="POST" action="/categories/add" class="wf-stack" style="gap:16px">
+        <div class="gate-field">
+            <label class="gate-label">Channel name</label>
+            <input class="gate-input" id="category" name="category" type="text"
+                placeholder="e.g. Technology" autofocus required>
+            <span class="wf-mono mt-1" style="font-size:10px">A URL-friendly slug is generated automatically.</span>
         </div>
-    </div>
+        <div class="wf-row" style="gap:10px">
+            <button type="submit" class="gate-btn" style="width:auto;display:inline-block;padding:10px 28px">
+                &#x25B8; Create
+            </button>
+            <a href="/categories" class="gate-btn ghost" style="width:auto;display:inline-block;padding:10px 22px">
+                Cancel
+            </a>
+        </div>
+    </form>
 </div>

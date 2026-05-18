@@ -1,63 +1,65 @@
-<div class="admin-page">
-    <div class="container py-5">
-        <div class="d-flex align-items-center justify-content-between mb-4">
-            <div>
-                <h1 class="admin-title">Membership Queue</h1>
-                <p class="text-muted mb-0">Review and approve pending Club9 applications</p>
-            </div>
-            <a href="/posts" class="btn btn-ghost-sm">
-                <i class="bi bi-arrow-left me-1"></i>Dashboard
-            </a>
-        </div>
-
-        {{#if errorMessage}}
-        <div class="alert alert-danger border-0 rounded-3">{{errorMessage}}</div>
-        {{/if}}
-
-        {{#if pending.length}}
-        <div class="table-responsive admin-table-wrap">
-            <table class="table table-hover admin-table mb-0">
-                <thead>
-                    <tr>
-                        <th>Alias</th>
-                        <th>Requested</th>
-                        <th class="text-end">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{#each pending}}
-                    <tr>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                {{#if avatar_url}}
-                                <img src="{{avatar_url}}" class="meta-avatar-xs" alt="">
-                                {{else}}
-                                <span class="meta-avatar-initials-xs">{{avatarInitial username}}</span>
-                                {{/if}}
-                                <span class="fw-medium">{{username}}</span>
-                            </div>
-                        </td>
-                        <td class="text-muted small">{{timeAgo created_at}}</td>
-                        <td class="text-end">
-                            <form method="POST" action="/admin/approvals/{{id}}/approve" class="d-inline">
-                                <button type="submit" class="btn-approve me-1">Approve</button>
-                            </form>
-                            <form method="POST" action="/admin/approvals/{{id}}/reject" class="d-inline">
-                                <button type="submit" class="btn-reject"
-                                    onclick="return confirm('Reject this member?')">Reject</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {{/each}}
-                </tbody>
-            </table>
-        </div>
-        {{else}}
-        <div class="empty-state text-center py-5">
-            <i class="bi bi-person-check display-1 text-muted"></i>
-            <h3 class="mt-3 text-muted">No pending applications</h3>
-            <p class="text-muted">You are all caught up.</p>
-        </div>
-        {{/if}}
+<div class="admin-header">
+    <div>
+        <h1 class="admin-title">Membership Queue</h1>
+        <p class="admin-sub">Review pending applications</p>
+    </div>
+    <div class="wf-row" style="gap:8px">
+        <span class="wf-chip wf-chip--pink">ADMIN</span>
+        <a href="/posts" class="btn-action">&#x2190; Dashboard</a>
     </div>
 </div>
+
+{{#if errorMessage}}
+<div class="gate-error mb-3" style="max-width:600px">{{errorMessage}}</div>
+{{/if}}
+
+{{#if pending.length}}
+<div style="overflow-x:auto">
+    <table class="crt-table">
+        <thead>
+            <tr>
+                <th>Alias</th>
+                <th>Requested</th>
+                <th style="text-align:right">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each pending}}
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        {{#if avatar_url}}
+                        <img src="{{avatar_url}}" alt=""
+                            style="width:26px;height:26px;border-radius:50%;border:1px solid var(--neon-pink);object-fit:cover">
+                        {{else}}
+                        <div style="width:26px;height:26px;border-radius:50%;border:1px solid var(--neon-pink);
+                                    background:rgba(255,43,214,0.08);display:flex;align-items:center;
+                                    justify-content:center;font-family:var(--f-pixel);font-size:14px;color:var(--neon-pink)">
+                            {{avatarInitial username}}
+                        </div>
+                        {{/if}}
+                        <span class="cell-title">{{username}}</span>
+                    </div>
+                </td>
+                <td class="cell-mono">{{timeAgo created_at}}</td>
+                <td style="text-align:right;white-space:nowrap">
+                    <form method="POST" action="/admin/approvals/{{id}}/approve" style="display:inline">
+                        <button type="submit" class="btn-approve">Approve</button>
+                    </form>
+                    <form method="POST" action="/admin/approvals/{{id}}/reject" style="display:inline;margin-left:6px">
+                        <button type="submit" class="btn-reject"
+                            onclick="return confirm('Reject this member?')">Reject</button>
+                    </form>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>
+{{else}}
+<div class="empty-state">
+    <i class="bi bi-person-check"></i>
+    <h3>Queue is clear</h3>
+    <p>No pending applications. You are all caught up.</p>
+</div>
+{{/if}}

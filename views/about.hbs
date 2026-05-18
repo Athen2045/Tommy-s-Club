@@ -1,68 +1,32 @@
-<section class="about-hero">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8 text-center">
-                <div class="about-avatar-wrap mb-4">
-                    <span class="about-avatar-initials">C9</span>
-                </div>
-                <h1 class="about-name">Club9</h1>
-                <p class="about-tagline">Exclusive · Anonymous · Invite-Only</p>
-            </div>
-        </div>
-    </div>
-</section>
+<div class="wf-row mb-3" style="gap:14px;align-items:flex-end">
+    <div style="font-family:var(--f-hand);font-size:32px;color:var(--neon-red);
+                text-shadow:0 0 8px rgba(255,90,44,0.7)">Tommy's</div>
+    <div style="font-family:var(--f-pixel);font-size:22px;letter-spacing:6px;color:var(--neon-blue);
+                text-shadow:0 0 8px rgba(43,184,255,0.7)">CLUB9</div>
+</div>
 
-<section class="about-content">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-7">
-                <div class="about-prose">
-                    <p class="lead">Club9 is a private space for a carefully chosen circle — a place to write freely, think openly, and connect without the noise of the public internet.</p>
+<div class="wf-eyebrow mb-3" style="color:var(--neon-cyan)">Exclusive &middot; Anonymous &middot; Invite-Only</div>
 
-                    <p>Membership is limited by design. This isn't a platform built for scale — it's built for depth. Every voice here was let in intentionally, and that makes all the difference.</p>
+<div class="about-prose">
+    <p class="lead">Club9 is a private space for a carefully chosen circle — a place to write freely, think openly, and connect without the noise of the public internet.</p>
 
-                    <p>Anonymity is a first-class feature. You choose your alias, your avatar, your presence. What matters is what you write, not who the world thinks you are.</p>
+    <p>Membership is limited by design. This isn't a platform built for scale — it's built for depth. Every voice here was let in intentionally, and that makes all the difference.</p>
 
-                    <h3 class="mt-5 mb-3">What happens here</h3>
-                    <div class="row g-3 mb-4">
-                        <div class="col-sm-6">
-                            <div class="about-topic-card">
-                                <i class="bi bi-pencil-square"></i>
-                                <span>Thoughts &amp; Writing</span>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="about-topic-card">
-                                <i class="bi bi-eye-slash"></i>
-                                <span>Anonymous Identities</span>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="about-topic-card">
-                                <i class="bi bi-shield-lock"></i>
-                                <span>Private by Default</span>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="about-topic-card">
-                                <i class="bi bi-stars"></i>
-                                <span>Curated Members</span>
-                            </div>
-                        </div>
-                    </div>
+    <p>Anonymity is a first-class feature. You choose your alias, your avatar, your presence. What matters is what you write, not who the world thinks you are.</p>
 
-                    <div class="about-cta">
-                        <a href="/blog" class="btn btn-primary rounded-pill px-4 me-2">
-                            <i class="bi bi-journal-text me-2"></i>Read the posts
-                        </a>
-                        {{#unless session.user}}
-                        <a href="/register" class="btn btn-outline-secondary rounded-pill px-4">
-                            Request access
-                        </a>
-                        {{/unless}}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+    <h2>What happens here</h2>
+</div>
+
+<div class="feature-grid" style="max-width:480px">
+    <div class="feature-item">&#x1F4DD;&nbsp; Thoughts &amp; Writing</div>
+    <div class="feature-item">&#x1F441;&nbsp; Anonymous Identities</div>
+    <div class="feature-item">&#x1F512;&nbsp; Private by Default</div>
+    <div class="feature-item">&#x2728;&nbsp; Curated Members</div>
+</div>
+
+<div class="wf-row mt-4" style="gap:10px">
+    <a href="/blog" class="wf-btn cyan" style="display:inline-block">&#x25B8; Read the Posts</a>
+    {{#unless session.user}}
+    <a href="/register" class="wf-btn ghost" style="display:inline-block">Request Access</a>
+    {{/unless}}
+</div>

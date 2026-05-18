@@ -1,18 +1,27 @@
-<h2>{{session.user.userName}} ({{session.user.email}}) History</h2>
+<div class="admin-header">
+    <div>
+        <h1 class="admin-title">Login History</h1>
+        <p class="admin-sub">{{session.user.username}} &middot; {{session.user.email}}</p>
+    </div>
+</div>
 
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th>Login Date/Time</th>
-      <th>Client Information</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each session.user.loginHistory}}
-      <tr>
-        <td>{{this.dateTime}}</td>
-        <td>{{this.userAgent}}</td>
-      </tr>
-    {{/each}}
-  </tbody>
-</table>
+<div style="overflow-x:auto;max-width:700px">
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Date &amp; Time</th>
+                <th>Client</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each session.user.loginHistory}}
+            <tr>
+                <td>{{this.dateTime}}</td>
+                <td style="font-size:10px;color:var(--ink-faint);max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    {{this.userAgent}}
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+</div>

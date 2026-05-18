@@ -1,97 +1,65 @@
-<div class="admin-page">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-9">
-                <div class="d-flex align-items-center gap-3 mb-4">
-                    <a href="/posts" class="btn btn-ghost-sm"><i class="bi bi-arrow-left"></i></a>
-                    <h1 class="admin-title mb-0">New Post</h1>
-                </div>
-
-                <form method="POST" action="/posts/add" enctype="multipart/form-data" id="postForm">
-                    <!-- Title (optional) -->
-                    <div class="mb-4">
-                        <input type="text" class="form-control form-control-lg post-title-input"
-                            id="title" name="title" placeholder="Title (optional)">
-                    </div>
-
-                    <!-- Quill editor -->
-                    <div class="mb-4">
-                        <label class="form-label text-muted small fw-medium">Content</label>
-                        <div id="quill-editor" style="min-height:320px"></div>
-                        <textarea name="body" id="bodyField" style="display:none"></textarea>
-                    </div>
-
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-5">
-                            <label class="form-label text-muted small fw-medium" for="category">Channel</label>
-                            {{#if categories}}
-                            <select class="form-select" name="category" id="category">
-                                <option value="">No channel</option>
-                                {{#each categories}}
-                                <option value="{{id}}">{{name}}</option>
-                                {{/each}}
-                            </select>
-                            {{else}}
-                            <div class="text-muted small">No channels yet.</div>
-                            {{/if}}
-                        </div>
-                        <div class="col-md-7">
-                            <label class="form-label text-muted small fw-medium" for="featureImage">
-                                Cover image (optional)
-                            </label>
-                            <input class="form-control" type="file" id="featureImage"
-                                name="featureImage" accept="image/*">
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="published" name="published">
-                            <label class="form-check-label fw-medium" for="published">
-                                Publish immediately
-                            </label>
-                        </div>
-                        <div class="text-muted small mt-1">Unpublished posts are drafts — only visible to you.</div>
-                    </div>
-
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary rounded-pill px-5">Publish</button>
-                        <a href="/posts" class="btn btn-outline-secondary rounded-pill px-4">Cancel</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+<div class="wf-row mb-3" style="gap:12px">
+    <a href="/posts" class="wf-btn ghost sm">&#x2190;</a>
+    <h1 class="wf-h2">New Post</h1>
 </div>
 
+<form method="POST" action="/posts/add" enctype="multipart/form-data" id="postForm"
+    style="max-width:760px;display:flex;flex-direction:column;gap:18px">
+
+    <!-- Title -->
+    <input type="text" class="post-title-input" id="title" name="title"
+        placeholder="Title (optional)">
+
+    <!-- Quill editor -->
+    <div>
+        <div class="wf-label mb-2">Content</div>
+        <div id="quill-editor"></div>
+        <textarea name="body" id="bodyField" style="display:none"></textarea>
+    </div>
+
+    <!-- Channel + cover image -->
+    <div class="wf-row" style="gap:16px;align-items:flex-start">
+        <div class="gate-field" style="flex:1">
+            <label class="gate-label">Channel</label>
+            {{#if categories}}
+            <select class="gate-input" name="category" id="category">
+                <option value="">No channel</option>
+                {{#each categories}}
+                <option value="{{id}}">{{name}}</option>
+                {{/each}}
+            </select>
+            {{else}}
+            <div class="wf-mono" style="padding:8px 0">No channels yet.</div>
+            {{/if}}
+        </div>
+        <div class="gate-field" style="flex:1.5">
+            <label class="gate-label">Cover Image (optional)</label>
+            <input class="gate-input" type="file" id="featureImage" name="featureImage"
+                accept="image/*" style="padding:6px 12px;cursor:pointer">
+        </div>
+    </div>
+
+    <!-- Publish toggle -->
+    <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="published" name="published"
+            style="accent-color:var(--neon-pink);width:14px;height:14px">
+        <label class="gate-label" for="published" style="cursor:pointer;letter-spacing:0.12em">
+            Publish immediately
+        </label>
+        <span class="wf-mono" style="font-size:10px;color:var(--ink-faint)">— drafts are private</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="wf-row" style="gap:10px">
+        <button type="submit" class="gate-btn" style="width:auto;padding:10px 28px;display:inline-block">
+            &#x25B8; Publish
+        </button>
+        <a href="/posts" class="gate-btn ghost" style="width:auto;padding:10px 24px;display:inline-block">Cancel</a>
+    </div>
+
+</form>
+
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
-<style>
-.ql-toolbar.ql-snow {
-    background: var(--bg-elevated);
-    border-color: var(--border) !important;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-}
-.ql-container.ql-snow {
-    background: var(--bg-input);
-    border-color: var(--border) !important;
-    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 1rem;
-}
-.ql-editor { min-height: 300px; line-height: 1.8; }
-.ql-snow .ql-stroke { stroke: var(--text-secondary); }
-.ql-snow .ql-fill  { fill:   var(--text-secondary); }
-.ql-snow .ql-picker-label { color: var(--text-secondary); }
-.ql-snow .ql-picker-options {
-    background: var(--bg-elevated);
-    border-color: var(--border) !important;
-}
-.ql-snow.ql-toolbar button:hover .ql-stroke,
-.ql-snow.ql-toolbar button.ql-active .ql-stroke { stroke: var(--primary); }
-.ql-snow.ql-toolbar button:hover .ql-fill,
-.ql-snow.ql-toolbar button.ql-active .ql-fill   { fill:   var(--primary); }
-</style>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script>
 (function () {

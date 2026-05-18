@@ -1,53 +1,38 @@
-<div class="admin-page">
-    <div class="container py-5">
-        <div class="d-flex align-items-center justify-content-between mb-4">
-            <div>
-                <h1 class="admin-title">Categories</h1>
-                <p class="text-muted mb-0">Organise your posts by topic</p>
-            </div>
-            {{#if session.user.isAdmin}}
-            <a href="/categories/add" class="btn btn-primary rounded-pill px-4">
-                <i class="bi bi-plus-lg me-1"></i>New category
-            </a>
-            {{/if}}
-        </div>
-
-        {{#if message}}
-        <div class="empty-state text-center py-5">
-            <i class="bi bi-tags display-1 text-muted"></i>
-            <h3 class="mt-3 text-muted">No categories yet</h3>
-            {{#if session.user.isAdmin}}
-            <a href="/categories/add" class="btn btn-primary rounded-pill mt-2">Create one</a>
-            {{/if}}
-        </div>
-        {{else}}
-        <div class="row g-3">
-            {{#each categories}}
-            <div class="col-sm-6 col-md-4 col-lg-3">
-                <div class="category-admin-card">
-                    <div class="category-admin-icon">
-                        <i class="bi bi-tag"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">{{name}}</div>
-                        <div class="text-muted small">/{{slug}}</div>
-                    </div>
-                    <div class="d-flex gap-1">
-                        <a href="/posts?category={{id}}" class="btn btn-ghost-xs" title="View posts">
-                            <i class="bi bi-list-ul"></i>
-                        </a>
-                        {{#if ../session.user.isAdmin}}
-                        <a href="/categories/delete/{{id}}"
-                            class="btn btn-ghost-xs text-danger"
-                            onclick="return confirm('Delete category «{{name}}»?')" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </a>
-                        {{/if}}
-                    </div>
-                </div>
-            </div>
-            {{/each}}
-        </div>
-        {{/if}}
+<div class="admin-header">
+    <div>
+        <h1 class="admin-title">Channels</h1>
+        <p class="admin-sub">Organise posts by topic</p>
     </div>
+    {{#if session.user.isAdmin}}
+    <a href="/categories/add" class="wf-btn cyan sm">&#x25B8; New Channel</a>
+    {{/if}}
 </div>
+
+{{#if message}}
+<div class="empty-state">
+    <i class="bi bi-tags"></i>
+    <h3>No channels yet</h3>
+    {{#if session.user.isAdmin}}
+    <a href="/categories/add" class="wf-btn mt-3" style="display:inline-block">&#x25B8; Create one</a>
+    {{/if}}
+</div>
+{{else}}
+<div class="wf-stack" style="gap:8px;max-width:600px">
+    {{#each categories}}
+    <div class="cat-row">
+        <div>
+            <a href="/blog?category={{id}}" class="cat-name">{{name}}</a>
+            <div class="cat-slug">/{{slug}}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+            <span class="cat-count">{{postCount}} post{{#gt postCount 1}}s{{/gt}}</span>
+            {{#if ../session.user.isAdmin}}
+            <a href="/categories/delete/{{id}}"
+                onclick="return confirm('Delete channel «{{name}}»?')"
+                class="btn-delete" style="font-size:10px;padding:3px 8px">Del</a>
+            {{/if}}
+        </div>
+    </div>
+    {{/each}}
+</div>
+{{/if}}

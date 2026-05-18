@@ -1,53 +1,47 @@
-<div class="gate-wrap">
+<!-- Brick wall background -->
+<div class="brick-wall" style="opacity:0.65"></div>
 
-    <div class="ctos-emblem-wrap">
-        <div class="ctos-emblem">
-            <svg class="ctos-outer-hex" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="90,6 166,48 166,132 90,174 14,132 14,48"
-                    stroke="#00d4ff" stroke-width="1" stroke-dasharray="6 3" opacity="0.6"/>
-                <line x1="90"  y1="6"   x2="90"  y2="18"  stroke="#00d4ff" stroke-width="1.5" opacity="0.9"/>
-                <line x1="166" y1="48"  x2="155" y2="54"  stroke="#00d4ff" stroke-width="1.5" opacity="0.9"/>
-                <line x1="166" y1="132" x2="155" y2="126" stroke="#00d4ff" stroke-width="1.5" opacity="0.9"/>
-                <line x1="90"  y1="174" x2="90"  y2="162" stroke="#00d4ff" stroke-width="1.5" opacity="0.9"/>
-                <line x1="14"  y1="132" x2="25"  y2="126" stroke="#00d4ff" stroke-width="1.5" opacity="0.9"/>
-                <line x1="14"  y1="48"  x2="25"  y2="54"  stroke="#00d4ff" stroke-width="1.5" opacity="0.9"/>
-            </svg>
-            <svg class="ctos-inner-hex" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="90,28 148,62 148,118 90,152 32,118 32,62"
-                    stroke="#00d4ff" stroke-width="1.5" opacity="0.3"/>
-            </svg>
-            <div class="ctos-scan-line"></div>
-            <div class="ctos-glyph">C9</div>
-            <div class="ctos-corner ctos-corner-tl"></div>
-            <div class="ctos-corner ctos-corner-tr"></div>
-            <div class="ctos-corner ctos-corner-bl"></div>
-            <div class="ctos-corner ctos-corner-br"></div>
-            <div class="ctos-hud-label">CLUB.9 · ACCESS</div>
+<!-- Boot sequence wrapper: dots → POST text → Tommy's neon sign -->
+<div class="boot-wrap">
+    <!-- Stage 1: Loading dots -->
+    <div class="boot-dots">
+        <div class="boot-dot"></div>
+        <div class="boot-dot"></div>
+        <div class="boot-dot"></div>
+    </div>
+
+    <!-- Stage 2: POST self-test text -->
+    <div class="boot-text">
+        TOMMY'S CLUB&nbsp;&nbsp;·&nbsp;&nbsp;SYSTEM v1.9.85&nbsp;&nbsp;·&nbsp;&nbsp;POST OK&nbsp;&nbsp;·&nbsp;&nbsp;MEMORY 640K
+    </div>
+
+    <!-- Stage 3: Neon sign sputters in -->
+    <div class="boot-sign-wrap">
+        <div class="neon-sign-stack">
+            <div class="neon-tommys">Tommy's</div>
+            <div class="neon-club">CLUB</div>
         </div>
     </div>
+</div>
 
-    <div class="gate-form-wrap">
-        {{#if errorMessage}}
-        <p class="gate-error">{{errorMessage}}</p>
-        {{/if}}
+<!-- Stage 4: Login form fades in from bottom -->
+<div class="boot-login">
+    {{#if errorMessage}}
+    <p class="gate-error">{{errorMessage}}</p>
+    {{/if}}
 
-        <form method="POST" action="/login" class="gate-form">
-            <div class="gate-field">
-                <label class="gate-label">EMAIL</label>
-                <input type="email" name="email" class="gate-input" value="{{email}}"
-                    placeholder="your@email.com" required autofocus autocomplete="email">
-            </div>
-            <div class="gate-field">
-                <label class="gate-label">PASSWORD</label>
-                <input type="password" name="password" class="gate-input"
-                    placeholder="••••••••" required autocomplete="current-password">
-            </div>
-            <button type="submit" class="gate-btn">ENTER</button>
-        </form>
-
-        <p class="gate-switch">
-            No account? <a href="/register">Register</a>
-        </p>
-    </div>
-
+    <form method="POST" action="/login" class="gate-form">
+        <div class="gate-field">
+            <label class="gate-label">Email</label>
+            <input type="email" name="email" class="gate-input" value="{{email}}"
+                placeholder="anon@member.club" required autofocus autocomplete="email">
+        </div>
+        <div class="gate-field">
+            <label class="gate-label">Password</label>
+            <input type="password" name="password" class="gate-input"
+                placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="gate-btn">&#x25B8; ENTER</button>
+        <p class="gate-switch mt-2">No alias? <a href="/register">Request access</a></p>
+    </form>
 </div>

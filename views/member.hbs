@@ -1,40 +1,35 @@
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-
-            <div class="member-profile-header mb-5">
-                <div>
-                    {{#if member.avatar_url}}
-                    <img src="{{member.avatar_url}}" alt="" class="member-avatar">
-                    {{else}}
-                    <span class="member-avatar-initials">{{avatarInitial member.username}}</span>
-                    {{/if}}
-                </div>
-                <div class="member-profile-info">
-                    <h1 class="member-name">{{member.username}}</h1>
-                    <p class="member-since">Member since {{formatDate member.created_at}}</p>
-                    {{#if member.bio}}
-                    <p class="member-bio">{{member.bio}}</p>
-                    {{/if}}
-                </div>
-            </div>
-
-            <div class="member-section-label">POSTS BY {{member.username}}</div>
-            {{#if member.posts.length}}
-            <div class="member-posts-list">
-                {{#each member.posts}}
-                <a href="/blog/{{id}}" class="member-post-item">
-                    <span class="member-post-title">
-                        {{#if title}}{{title}}{{else}}{{excerpt body 60}}{{/if}}
-                    </span>
-                    <span class="member-post-date">{{timeAgo created_at}}</span>
-                </a>
-                {{/each}}
-            </div>
-            {{else}}
-            <p class="text-muted">No published posts yet.</p>
-            {{/if}}
-
-        </div>
+<div class="profile-header">
+    {{#if member.avatar_url}}
+    <img src="{{member.avatar_url}}" alt="" class="profile-avatar">
+    {{else}}
+    <div class="profile-avatar-placeholder">{{avatarInitial member.username}}</div>
+    {{/if}}
+    <div>
+        <div class="profile-username">{{member.username}}</div>
+        <div class="profile-since">Member since {{formatDate member.created_at}} &middot; {{member.posts.length}} post{{#gt member.posts.length 1}}s{{/gt}}</div>
+        {{#if member.bio}}
+        <div class="profile-bio">&ldquo;{{member.bio}}&rdquo;</div>
+        {{/if}}
     </div>
 </div>
+
+<div class="wf-label" style="color:var(--neon-pink);margin-bottom:10px">
+    POSTS BY {{member.username}}
+</div>
+
+{{#if member.posts.length}}
+<div class="wf-stack" style="gap:8px">
+    {{#each member.posts}}
+    <a href="/blog/{{id}}" class="wf-box" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:12px;text-decoration:none;">
+        <span style="font-family:var(--f-pixel);font-size:17px;color:var(--ink)">
+            {{#if title}}{{title}}{{else}}{{excerpt body 60}}{{/if}}
+        </span>
+        <span class="wf-mono" style="flex-shrink:0">{{timeAgo created_at}}</span>
+    </a>
+    {{/each}}
+</div>
+{{else}}
+<div class="empty-state">
+    <p>No published posts yet.</p>
+</div>
+{{/if}}

@@ -3,13 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Club9</title>
+    <title>{{#if title}}{{title}} — {{/if}}Tommy's Club9</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/crt.css">
 </head>
-<body class="gate-body">
-    {{{body}}}
+<body>
+    <div class="crt">
+        <div class="crt-screen">
+            <div class="crt-content">
+                <div class="crt-sweep"></div>
+                {{{body}}}
+            </div>
+        </div>
+        <div class="crt-led"></div>
+    </div>
 </body>
 </html>

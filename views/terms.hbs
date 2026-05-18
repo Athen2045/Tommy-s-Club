@@ -1,52 +1,35 @@
-<div class="gate-wrap">
-    <div class="ctos-emblem-wrap">
-        <div class="ctos-emblem ctos-emblem-sm">
-            <svg class="ctos-outer-hex" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="60,4 110,32 110,88 60,116 10,88 10,32"
-                    stroke="#00d4ff" stroke-width="1" stroke-dasharray="5 3" opacity="0.5"/>
-            </svg>
-            <svg class="ctos-inner-hex" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="60,20 96,42 96,78 60,100 24,78 24,42"
-                    stroke="#00d4ff" stroke-width="1.5" opacity="0.3"/>
-            </svg>
-            <div class="ctos-scan-line"></div>
-            <div class="ctos-glyph">C9</div>
-            <div class="ctos-corner ctos-corner-tl"></div>
-            <div class="ctos-corner ctos-corner-tr"></div>
-            <div class="ctos-corner ctos-corner-bl"></div>
-            <div class="ctos-corner ctos-corner-br"></div>
-            <div class="ctos-hud-label">CLUB.9 · ACCESS</div>
-        </div>
+<div class="brick-wall" style="opacity:0.4"></div>
+
+<div class="gate-wrap" style="z-index:5">
+    <div class="neon-sign-stack sm">
+        <div class="neon-tommys">Tommy's</div>
+        <div class="neon-club">CLUB</div>
     </div>
 
-    <div class="gate-form-wrap">
-        <h2 class="status-gate-heading mb-1">MEMBERSHIP RULES</h2>
-        <p class="status-gate-body mb-4">Read carefully. You agree once.</p>
+    <div class="gate-eyebrow" style="margin-top:-6px">— House Rules —</div>
 
-        {{#if errorMessage}}
-        <p class="gate-error">{{errorMessage}}</p>
-        {{/if}}
+    {{#if errorMessage}}
+    <p class="gate-error" style="width:90%;max-width:380px">{{errorMessage}}</p>
+    {{/if}}
 
-        <form method="POST" action="/terms" class="gate-form">
-            <div class="terms-rules">
-                <ol>
-                    <li>Anonymity is mutual &mdash; never attempt to identify or expose another member.</li>
-                    <li>No harassment, hate speech, threats, or targeted abuse of any kind.</li>
-                    <li>The admin may remove any member or content at any time, for any reason.</li>
-                    <li>What is shared in Club9 stays in Club9 &mdash; do not screenshot or repost elsewhere.</li>
-                    <li>You are responsible for everything posted under your alias.</li>
-                </ol>
-            </div>
-
-            <label class="terms-check-label">
-                <input type="checkbox" name="agreed" value="1" id="agreedBox"
-                    onchange="document.getElementById('termsBtn').disabled = !this.checked">
-                I have read and agree to the Club9 rules
-            </label>
-
-            <button type="submit" class="gate-btn mt-3" id="termsBtn" disabled>
-                ENTER CLUB9
-            </button>
-        </form>
+    <div class="terms-box">
+        <ol>
+            <li>Anonymity is mutual &mdash; never attempt to identify or expose another member.</li>
+            <li>No harassment, hate speech, threats, or targeted abuse of any kind.</li>
+            <li>The admin may remove any member or content at any time, for any reason.</li>
+            <li>What is shared in Club9 stays in Club9 &mdash; do not screenshot or repost elsewhere.</li>
+            <li>You are responsible for everything posted under your alias.</li>
+        </ol>
     </div>
+
+    <form method="POST" action="/terms" style="display:flex;flex-direction:column;align-items:center;gap:12px;width:90%;max-width:380px">
+        <label class="terms-check-label">
+            <input type="checkbox" name="agreed" value="1" id="agreedBox"
+                onchange="document.getElementById('termsBtn').disabled = !this.checked">
+            I have read and agree to the Club9 rules
+        </label>
+        <button type="submit" class="gate-btn" id="termsBtn" disabled style="width:100%">
+            &#x25B8; ENTER CLUB9
+        </button>
+    </form>
 </div>
