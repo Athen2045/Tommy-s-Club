@@ -68,9 +68,11 @@
                 <td class="cell-mono">{{formatDate created_at}}</td>
                 <td style="text-align:right;white-space:nowrap">
                     <a href="/blog/{{id}}" class="btn-edit" title="View">View</a>
-                    <a href="/posts/delete/{{id}}" class="btn-delete"
-                        onclick="return confirm('Delete «{{title}}»?')" title="Delete"
-                        style="margin-left:6px">Del</a>
+                    <form method="POST" action="/posts/delete/{{id}}"
+                        style="display:inline;margin-left:6px"
+                        onsubmit="return confirm('Delete «{{title}}»?')">
+                        <button type="submit" class="btn-delete" title="Delete">Del</button>
+                    </form>
                 </td>
             </tr>
             {{/each}}

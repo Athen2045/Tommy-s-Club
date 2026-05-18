@@ -91,9 +91,13 @@
                     <button class="reply-toggle" data-id="{{id}}">&#x21B5; Reply</button>
                     {{/if}}
                     {{#equal ../session.user.id author_id}}
-                    <a href="/comments/delete/{{id}}?post={{../post.id}}"
-                        class="comment-delete-link"
-                        onclick="return confirm('Delete this comment?')">Delete</a>
+                    <form method="POST" action="/comments/delete/{{id}}"
+                        style="display:inline"
+                        onsubmit="return confirm('Delete this comment?')">
+                        <input type="hidden" name="postId" value="{{../post.id}}">
+                        <button type="submit" class="comment-delete-link"
+                            style="background:none;border:none;padding:0;cursor:pointer">Delete</button>
+                    </form>
                     {{/equal}}
                 </div>
 
@@ -131,9 +135,13 @@
                             </div>
                             <p class="comment-body">{{body}}</p>
                             {{#equal ../../session.user.id author_id}}
-                            <a href="/comments/delete/{{id}}?post={{../../post.id}}"
-                                class="comment-delete-link"
-                                onclick="return confirm('Delete this reply?')">Delete</a>
+                            <form method="POST" action="/comments/delete/{{id}}"
+                                style="display:inline"
+                                onsubmit="return confirm('Delete this reply?')">
+                                <input type="hidden" name="postId" value="{{../../post.id}}">
+                                <button type="submit" class="comment-delete-link"
+                                    style="background:none;border:none;padding:0;cursor:pointer">Delete</button>
+                            </form>
                             {{/equal}}
                         </div>
                     </div>

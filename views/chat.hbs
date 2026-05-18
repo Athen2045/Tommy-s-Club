@@ -102,19 +102,14 @@
 })();
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function () {
     'use strict';
 
-    var SUPABASE_URL      = '{{supabaseUrl}}';
-    var SUPABASE_ANON_KEY = '{{supabaseAnonKey}}';
-    var CURRENT_USER_ID   = '{{currentUserId}}';
-    var CURRENT_USERNAME  = '{{currentUsername}}';
-    var IS_ADMIN          = {{#if isAdmin}}true{{else}}false{{/if}};
-    var members           = {{{membersJson}}};
-
-    var sbClient  = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    var CURRENT_USER_ID  = '{{currentUserId}}';
+    var CURRENT_USERNAME = '{{currentUsername}}';
+    var IS_ADMIN         = {{#if isAdmin}}true{{else}}false{{/if}};
+    var members          = {{{membersJson}}};
     var container = document.getElementById('chatMessages');
     var inputEl   = document.getElementById('chatInput');
     var sendBtn   = document.getElementById('chatSendBtn');
@@ -263,32 +258,36 @@
 
     scrollToBottom();
 
-    // ── Supabase Realtime subscription ────────────────────
-    sbClient.channel('public:messages')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
-            function (payload) {
-                var row = payload.new;
-                sbClient.from('profiles')
-                    .select('username, avatar_url')
-                    .eq('id', row.author_id)
-                    .single()
-                    .then(function (result) {
-                        var profile = result.data || {};
-                        var msg = {
-                            id:         row.id,
-                            author_id:  row.author_id,
-                            body:       row.body,
-                            created_at: row.created_at,
-                            username:   profile.username,
-                            avatar_url: profile.avatar_url
-                        };
-                        container.appendChild(buildMsgEl(msg));
-                        localStorage.setItem('club9_last_msg', row.id);
-                        scrollToBottom();
-                    });
-            }
-        )
-        .subscribe();
+    // ── WebSocket relay (Supabase key stays server-side) ──
+    function connectWS() {
+        fetch('/chat/ws-token')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+                var ws = new WebSocket(proto + '://' + location.host + '/chat/ws?token=' + d.token);
+
+                ws.onmessage = function (e) {
+                    try {
+                        var msg = JSON.parse(e.data);
+                        if (msg.type === 'message') {
+                            container.appendChild(buildMsgEl(msg));
+                            localStorage.setItem('club9_last_msg', String(msg.id));
+                            scrollToBottom();
+                        }
+                    } catch (_) {}
+                };
+
+                ws.onclose = function (e) {
+                    // Reconnect after 3s unless server said unauthorized
+                    if (e.code !== 4001) setTimeout(connectWS, 3000);
+                };
+
+                ws.onerror = function () {};
+            })
+            .catch(function () { setTimeout(connectWS, 5000); });
+    }
+
+    connectWS();
 
     // ── Send message ──────────────────────────────────────
     function sendMessage() {

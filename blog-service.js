@@ -188,6 +188,15 @@ module.exports.deleteCommentById = async (id) => {
     if (error) throw new Error('unable to delete comment');
 };
 
+module.exports.deleteCommentIfAuthorized = async (id, requesterId, isAdmin) => {
+    const { data: comment } = await supabase
+        .from('comments').select('author_id').eq('id', id).single();
+    if (!comment) throw new Error('comment not found');
+    if (!isAdmin && comment.author_id !== requesterId) throw new Error('not authorised');
+    const { error } = await supabase.from('comments').delete().eq('id', id);
+    if (error) throw new Error('unable to delete comment');
+};
+
 // ── Profiles ──────────────────────────────────────────────
 
 module.exports.getProfile = async (userId) => {

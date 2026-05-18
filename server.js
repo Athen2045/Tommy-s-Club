@@ -1,11 +1,17 @@
 require('dotenv').config();
-const express = require('express');
-const session = require('express-session');
-const exphbs = require('express-handlebars');
-const multer = require('multer');
-const ImageKit = require('imagekit');
-const stripJs = require('strip-js');
-const path = require('path');
+const http           = require('http');
+const crypto         = require('crypto');
+const express        = require('express');
+const session        = require('express-session');
+const exphbs         = require('express-handlebars');
+const multer         = require('multer');
+const ImageKit       = require('imagekit');
+const sanitizeHtml   = require('sanitize-html');
+const path           = require('path');
+const helmet         = require('helmet');
+const rateLimit      = require('express-rate-limit');
+const { WebSocketServer } = require('ws');
+const { createClient }    = require('@supabase/supabase-js');
 
 const blogService = require('./blog-service');
 const authService = require('./auth-service');
@@ -20,7 +26,15 @@ const imagekit = new ImageKit({
     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
 });
 
-const upload = multer();
+// ── File upload — type + size guards ─────────────────────
+const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+const upload = multer({
+    limits: { fileSize: 8 * 1024 * 1024 },   // 8 MB max
+    fileFilter(_req, file, cb) {
+        if (ALLOWED_MIME.includes(file.mimetype)) return cb(null, true);
+        cb(new Error('Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'));
+    }
+});
 
 // ── Handlebars ────────────────────────────────────────────
 app.engine('.hbs', exphbs.engine({
@@ -34,7 +48,29 @@ app.engine('.hbs', exphbs.engine({
             return a == b ? options.fn(this) : options.inverse(this);
         },
         safeHTML(context) {
-            return stripJs(context);
+            // strip-js only removed <script> tags — sanitize-html also kills
+            // onerror/onclick attrs, data: URIs, and other XSS vectors
+            return sanitizeHtml(context, {
+                allowedTags: [
+                    'h1','h2','h3','h4','h5','h6',
+                    'p','br','hr','blockquote','pre','code',
+                    'ul','ol','li',
+                    'strong','b','em','i','u','s','strike',
+                    'a','img',
+                    'table','thead','tbody','tr','th','td',
+                    'div','span'
+                ],
+                allowedAttributes: {
+                    'a':   ['href', 'target', 'rel'],
+                    'img': ['src', 'alt', 'width', 'height'],
+                    '*':   ['class']
+                },
+                allowedSchemes: ['http', 'https', 'mailto'],
+                // Force external links to be safe
+                transformTags: {
+                    'a': sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' })
+                }
+            });
         },
         formatDate(d) {
             if (!d) return '';
@@ -69,16 +105,56 @@ app.engine('.hbs', exphbs.engine({
 }));
 app.set('view engine', '.hbs');
 
+// ── Security headers (helmet) ─────────────────────────────
+app.use(helmet({
+    // Allow CDN scripts/styles used by the app
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc:  ["'self'"],
+            scriptSrc:   ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'],
+            styleSrc:    ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net', 'fonts.googleapis.com'],
+            fontSrc:     ["'self'", 'fonts.gstatic.com', 'cdn.jsdelivr.net'],
+            imgSrc:      ["'self'", 'data:', 'blob:', 'ik.imagekit.io', '*.imagekit.io'],
+            connectSrc:  ["'self'", process.env.SUPABASE_URL || ''],
+        }
+    }
+}));
+
+// ── Rate limiters ─────────────────────────────────────────
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,   // 15 minutes
+    max: 10,                      // 10 attempts per window
+    message: 'Too many login attempts — please try again in 15 minutes.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,   // 1 hour
+    max: 5,                       // 5 registrations per IP per hour
+    message: 'Too many accounts created — please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // ── Middleware ────────────────────────────────────────────
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+const isProd = process.env.NODE_ENV === 'production';
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+    secret: process.env.SESSION_SECRET || (isProd
+        ? (() => { throw new Error('SESSION_SECRET env var must be set in production'); })()
+        : 'dev-secret-change-me-in-production'),
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 }
+    cookie: {
+        maxAge:   24 * 60 * 60 * 1000,
+        httpOnly: true,          // JS cannot read the session cookie (XSS protection)
+        secure:   isProd,        // HTTPS-only in production
+        sameSite: 'lax'          // CSRF mitigation for same-site form posts
+    }
 }));
 
 // Make session available to all templates
@@ -213,9 +289,15 @@ app.post('/blog/:id/comments', ensureLogin, async (req, res) => {
     res.redirect(`/blog/${req.params.id}#comments`);
 });
 
-app.get('/comments/delete/:id', ensureLogin, async (req, res) => {
-    const postId = req.query.post;
-    try { await blogService.deleteCommentById(req.params.id); } catch (e) {}
+app.post('/comments/delete/:id', ensureLogin, async (req, res) => {
+    const postId = req.body.postId || req.query.post;
+    try {
+        await blogService.deleteCommentIfAuthorized(
+            req.params.id,
+            req.session.user.id,
+            req.session.user.isAdmin
+        );
+    } catch (e) { /* silently skip — redirect either way */ }
     res.redirect(`/blog/${postId}#comments`);
 });
 
@@ -243,7 +325,7 @@ app.get('/login', (req, res) => {
     res.render('login', GATE);
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', loginLimiter, async (req, res) => {
     try {
         const user = await authService.loginUser(req.body.email, req.body.password);
         user.isAdmin = (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL);
@@ -259,7 +341,7 @@ app.get('/register', (req, res) => {
     res.render('register', GATE);
 });
 
-app.post('/register', async (req, res) => {
+app.post('/register', registerLimiter, async (req, res) => {
     try {
         await authService.registerUser(req.body);
         res.render('register', { ...GATE, successMessage: 'Account created! You can now sign in.' });
@@ -269,8 +351,7 @@ app.post('/register', async (req, res) => {
 });
 
 app.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/blog');
+    req.session.destroy(() => res.redirect('/login'));
 });
 
 // ── Routes: access gate screens ───────────────────────────
@@ -427,8 +508,14 @@ app.post('/posts/upload-image', ensureLogin, upload.single('image'), async (req,
     }
 });
 
-app.get('/posts/delete/:id', ensureLogin, async (req, res) => {
+app.post('/posts/delete/:id', ensureLogin, async (req, res) => {
     try {
+        // Verify ownership — only the author or an admin may delete
+        const post = await blogService.getPostById(req.params.id);
+        if (!post) return res.status(404).render('404');
+        if (!req.session.user.isAdmin && post.author_id !== req.session.user.id) {
+            return res.status(403).render('404');
+        }
         await blogService.deletePostById(req.params.id);
         res.redirect('/posts');
     } catch (err) {
@@ -458,7 +545,7 @@ app.post('/categories/add', ensureAdmin, async (req, res) => {
     }
 });
 
-app.get('/categories/delete/:id', ensureAdmin, async (req, res) => {
+app.post('/categories/delete/:id', ensureAdmin, async (req, res) => {
     try {
         await blogService.deleteCategoryById(req.params.id);
         res.redirect('/categories');
@@ -488,11 +575,11 @@ app.get('/chat', ensureLogin, async (req, res) => {
         res.render('chat', {
             messages,
             membersJson:     JSON.stringify(members),
-            supabaseUrl:     process.env.SUPABASE_URL,
-            supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
             currentUserId:   req.session.user.id,
             currentUsername: req.session.user.username,
             isAdmin:         !!req.session.user.isAdmin
+            // supabaseUrl + supabaseAnonKey intentionally omitted —
+            // realtime is proxied through /chat/ws so keys stay server-side
         });
     } catch (err) {
         res.render('chat', {
@@ -534,13 +621,87 @@ app.get('/chat/unread-count', ensureLogin, async (req, res) => {
     }
 });
 
+// ── WS auth token (one-time, 30s TTL) ────────────────────
+const wsTokens = new Map();
+
+app.get('/chat/ws-token', ensureLogin, (req, res) => {
+    const token = crypto.randomBytes(20).toString('hex');
+    wsTokens.set(token, {
+        userId:   req.session.user.id,
+        username: req.session.user.username,
+        isAdmin:  !!req.session.user.isAdmin,
+        exp:      Date.now() + 30_000
+    });
+    // Clean up expired tokens periodically
+    for (const [t, v] of wsTokens) if (Date.now() > v.exp) wsTokens.delete(t);
+    res.json({ token });
+});
+
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => res.status(404).render('404'));
+
+// ── WebSocket server + Supabase realtime relay ────────────
+const httpServer = http.createServer(app);
+const wss = new WebSocketServer({ server: httpServer, path: '/chat/ws' });
+
+// Server-side Supabase client for the realtime subscription
+// (anon key never sent to browser)
+const sbRelay = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+);
+
+function startRealtimeRelay() {
+    sbRelay.channel('server:messages')
+        .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'messages' },
+            async (payload) => {
+                const row = payload.new;
+                const { data: profile } = await sbRelay
+                    .from('profiles')
+                    .select('username, avatar_url')
+                    .eq('id', row.author_id)
+                    .single();
+
+                const envelope = JSON.stringify({
+                    type:       'message',
+                    id:         row.id,
+                    author_id:  row.author_id,
+                    body:       row.body,
+                    created_at: row.created_at,
+                    username:   profile?.username   || null,
+                    avatar_url: profile?.avatar_url || null
+                });
+
+                wss.clients.forEach(client => {
+                    if (client.readyState === 1 /* OPEN */) client.send(envelope);
+                });
+            }
+        )
+        .subscribe();
+}
+
+wss.on('connection', (ws, req) => {
+    const url   = new URL(req.url, `http://localhost`);
+    const token = url.searchParams.get('token');
+    const data  = wsTokens.get(token);
+
+    if (!token || !data || Date.now() > data.exp) {
+        ws.close(4001, 'Unauthorized');
+        return;
+    }
+    wsTokens.delete(token);          // one-time use
+    ws.userId = data.userId;
+    ws.on('error', () => {});        // absorb socket errors
+});
 
 // ── Start ─────────────────────────────────────────────────
 blogService.initialize()
     .then(authService.initialize)
     .then(() => {
-        app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+        startRealtimeRelay();
+        httpServer.listen(PORT, () =>
+            console.log(`Server running on http://localhost:${PORT}`)
+        );
     })
     .catch(err => console.error('Failed to start:', err));

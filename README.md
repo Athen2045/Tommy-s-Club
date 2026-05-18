@@ -1,82 +1,173 @@
-# Blog-Post Application
+# Tommy's Club
 
-## Project Overview
+A private, invite-only community platform. Members write posts, react, comment, and chat in real time — all behind a curated approval gate. Built with a 1980s CRT retro aesthetic.
 
-This project is a web application developed using **Node.js**, **Express**, and **MongoDB** for user authentication, along with various other packages to enhance functionality. It includes features like user registration and login with password encryption, session management, and file uploads.
+---
+
+## Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js |
+| Framework | Express 4 |
+| Templates | Handlebars (express-handlebars) |
+| Database & Auth | Supabase (PostgreSQL + Auth) |
+| Realtime | Supabase Postgres Changes → server-side WebSocket relay |
+| File Storage | ImageKit |
+| Sessions | express-session |
+| Security | helmet, express-rate-limit, sanitize-html |
+
+---
 
 ## Features
 
-- **User Authentication:**
-  - Secure user registration with unique username, email, and password.
-  - Passwords are hashed using **bcrypt.js**.
-  - Login history is tracked and stored for each user.
-  
-- **Session Management:**
-  - Sessions are managed using **client-sessions**.
-  
-- **File Uploads:**
-  - Files are uploaded using **Multer** and stored on **Cloudinary**.
+- **Invite-only access** — new registrations sit in a pending queue until approved by an admin
+- **Terms gate** — approved members must accept house rules before entering
+- **Blog** — rich-text posts (Quill editor) with categories, reactions, and threaded comments
+- **The Room** — real-time chat with @mention autocomplete (Mac System 1 aesthetic)
+- **Member profiles** — avatar, bio, post history
+- **Admin panel** — approve / reject pending members, manage categories
+- **CRT UI** — scanlines, neon glow, boot sequence, hamburger nav on mobile
 
-## Technologies Used
+---
 
-### Backend
+## Setup
 
-- **Node.js**: JavaScript runtime used to build the server.
-- **Express**: Web framework for routing and server management.
-- **MongoDB**: NoSQL database for storing user data, managed with **Mongoose**.
-- **bcrypt.js**: Library for securely hashing passwords.
-- **client-sessions**: Middleware for managing user sessions.
-- **Cloudinary**: Cloud storage for file uploads.
+### 1. Clone and install
 
-### Dependencies
+```bash
+git clone <repository-url>
+cd tommys-club
+npm install
+```
 
-- `auth-service`: Custom service for user authentication and management.
-- `bcryptjs`: Password hashing library.
-- `client-sessions`: Middleware for session management.
-- `cloudinary`: For integrating Cloudinary's image and file hosting services.
-- `express`: Web framework.
-- `express-handlebars`: Templating engine for server-side rendering.
-- `mongoose`: Object Data Modeling (ODM) library for MongoDB.
-- `multer`: Middleware for handling file uploads.
-- `pg` & `sequelize`: PostgreSQL and ORM for relational data (if needed).
-- `streamifier` & `strip-js`: Libraries for handling and processing data streams.
+### 2. Environment variables
 
-For a full list of dependencies, see the [`package.json`](./package.json) file.
+Copy the example file and fill in your credentials:
 
-## Setup Instructions
+```bash
+cp .env.example .env
+```
 
-1. Clone the repository:
+| Variable | Description |
+|---|---|
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key (server-only) |
+| `SESSION_SECRET` | Long random string — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `IMAGEKIT_PUBLIC_KEY` | ImageKit public key |
+| `IMAGEKIT_PRIVATE_KEY` | ImageKit private key |
+| `IMAGEKIT_URL_ENDPOINT` | ImageKit URL endpoint |
+| `ADMIN_EMAIL` | Email address that receives admin privileges on login |
+| `NODE_ENV` | Set to `production` on your server |
 
-   ```bash
-   git clone <repository-url>
+### 3. Run
 
-2. Navigate to the project directory:
+```bash
+# Development (auto-restart on file changes)
+npm run dev
 
-   ```bash
-   cd web322-app> 
+# Production
+npm start
+```
 
-3. Install the necessary dependencies:
+App runs at `http://localhost:8080`
 
-   ```bash
-   npm install
+---
 
-4. Create a .env file in the root directory and add the following environment variables:
+## Project Structure
 
-   ```bash
-   MONGO_URI=<your-mongodb-connection-string>
-   SESSION_SECRET=<your-session-secret>
-   CLOUDINARY_CLOUD_NAME=<cloudinary-cloud-name>
-   CLOUDINARY_API_KEY=<cloudinary-api-key>
-   CLOUDINARY_API_SECRET=<cloudinary-api-secret>
+```
+tommys-club/
+├── server.js               # Express app, all routes, WebSocket server, security middleware
+├── auth-service.js         # Supabase Auth — register, login
+├── blog-service.js         # Supabase DB — posts, comments, reactions, chat, profiles
+├── public/
+│   └── css/
+│       └── crt.css         # CRT design system (tokens, layout, animations, responsive)
+├── views/
+│   ├── layouts/
+│   │   ├── main.hbs        # Authenticated layout — topbar, sidebar, CRT frame
+│   │   └── gate.hbs        # Unauthenticated layout — bare CRT screen
+│   ├── login.hbs           # Boot sequence + login form
+│   ├── register.hbs        # Registration form
+│   ├── blog.hbs            # Post feed — THE VAULT
+│   ├── post.hbs            # Post detail — reactions + threaded comments
+│   ├── chat.hbs            # Real-time chat — The Room
+│   ├── profile.hbs         # Edit your profile
+│   ├── member.hbs          # Public member page
+│   ├── posts.hbs           # Dashboard — manage your posts
+│   ├── addPost.hbs         # Write / edit a post
+│   ├── categories.hbs      # Channel list
+│   ├── about.hbs           # About page
+│   ├── pending.hbs         # Awaiting approval screen
+│   ├── rejected.hbs        # Rejected screen
+│   ├── terms.hbs           # House rules acceptance
+│   ├── 404.hbs             # Not found
+│   └── admin/
+│       └── approvals.hbs   # Admin approval queue
+├── .env.example            # Environment variable template
+└── package.json
+```
 
-5. Start the server:
+---
 
-   ```bash
-   npm start
+## Security
 
-6. The application will run on http://localhost:3000.
+| Control | Detail |
+|---|---|
+| Session cookie | `httpOnly`, `sameSite: lax`, `secure` in production |
+| Security headers | `helmet` — CSP, X-Frame-Options, HSTS, referrer policy, and more |
+| Rate limiting | Login: 10 attempts / 15 min · Register: 5 accounts / hour per IP |
+| CSRF | All destructive actions use `POST` forms — `sameSite: lax` blocks cross-site POSTs |
+| XSS — post body | `sanitize-html` allowlist strips event attributes, `javascript:` URIs, unknown tags |
+| XSS — chat | `createTextNode` only — `innerHTML` never used |
+| File uploads | Image MIME types only (JPEG, PNG, GIF, WebP, AVIF), 8 MB max |
+| Ownership checks | Delete post / comment verifies `author_id === userId` or `isAdmin` |
+| Realtime credentials | Supabase anon key never sent to client — WebSocket relay proxies events server-side |
+| Admin | `isAdmin` resolved from `ADMIN_EMAIL` env var at login time |
+| Dependencies | 0 known vulnerabilities (`npm audit`) |
 
-## API Endpoints
-- POST /register: Register a new user.
-- POST /login: Log in an existing user.
-- POST /upload: Upload files to Cloudinary.
+---
+
+## Routes
+
+### Public
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Redirect to `/blog` |
+| GET | `/blog` | Post feed |
+| GET | `/blog/:id` | Single post |
+| GET | `/about` | About page |
+| GET | `/login` | Login form |
+| POST | `/login` | Authenticate (rate-limited) |
+| GET | `/register` | Registration form |
+| POST | `/register` | Create account (rate-limited) |
+| GET | `/logout` | Destroy session |
+
+### Authenticated
+| Method | Path | Description |
+|---|---|---|
+| GET | `/posts` | Your post dashboard |
+| GET | `/posts/add` | Write a post |
+| POST | `/posts/add` | Submit a post |
+| POST | `/posts/delete/:id` | Delete own post |
+| GET | `/profile` | View / edit profile |
+| GET | `/member/:username` | Public member profile |
+| GET | `/chat` | Real-time chat |
+| POST | `/chat/send` | Send message |
+| DELETE | `/chat/:id` | Delete own message |
+| POST | `/blog/:id/comments` | Post a comment |
+| POST | `/comments/delete/:id` | Delete own comment |
+| POST | `/blog/:id/react` | Toggle reaction |
+| GET | `/categories` | Channel list |
+
+### Admin only
+| Method | Path | Description |
+|---|---|---|
+| GET | `/admin/approvals` | Pending member queue |
+| POST | `/admin/approvals/:id/approve` | Approve a member |
+| POST | `/admin/approvals/:id/reject` | Reject a member |
+| GET | `/categories/add` | Add channel form |
+| POST | `/categories/add` | Create channel |
+| POST | `/categories/delete/:id` | Delete channel |
