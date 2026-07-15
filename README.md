@@ -6,6 +6,8 @@ It is also a passion project and a testing ground. I use it to try out ideas aro
 
 The login gate keeps its CRT character. Once inside, the application becomes a responsive editorial-pixel space inspired by magazines, 1990s web graphics, and modern social interfaces.
 
+And No, My name is not Tommy as you can see. It’s just a name for the project :3
+
 ## What you can explore
 
 - Email-verified accounts with terms acceptance and later admin approval or rejection.
