@@ -1,27 +1,40 @@
-<div class="admin-header">
-    <div>
-        <div class="wf-eyebrow">INDEPENDENT / PRIVATE / HUMAN</div>
-        <h1 class="admin-title">About the Club</h1>
-        <p class="admin-sub">A quieter corner of the internet for honest writing.</p>
+<section class="about-prose" aria-labelledby="about-title">
+    <div class="admin-header">
+        <div>
+            <div class="wf-eyebrow">OPEN SOURCE / EXPERIMENTAL / HUMAN</div>
+            <h1 class="admin-title" id="about-title">A small internet to build and learn in.</h1>
+            <p class="admin-sub">Tommy’s Club is a passion project for trying thoughtful social features in public.</p>
+        </div>
     </div>
-</div>
 
-<div class="about-prose">
-    <p class="lead">Tommy's Club is a private space for a carefully chosen circle — a place to write freely, think openly, and connect without the noise of the public internet.</p>
+    <p class="lead">Tommy’s Club is a place for writing, conversation, and the occasional idea that does not fit neatly into a feed.</p>
 
-    <p>Membership is limited by design. This isn't a platform built for scale — it's built for depth. Every voice here was let in intentionally, and that makes all the difference.</p>
+    <p>This website is open source because the process is part of the project. It is being used to test ideas around identity, privacy, realtime chat, media, and community without pretending that every idea is finished.</p>
 
-    <p>Anonymity is a first-class feature. You choose your alias, your avatar, your presence. What matters is what you write, not who the world thinks you are.</p>
+    <p>It is not built for maximum reach or endless scrolling. The hope is simpler: make a small space that feels considered, learn from the rough edges, and leave useful pieces behind for anyone curious enough to look around.</p>
 
-    <h2>What happens here</h2>
-</div>
+    <p>You can use an alias, choose how much of yourself to share, write something long, reply to someone, or send a thought to The Room. What matters here is the quality of the exchange, not the size of the audience.</p>
 
-<div class="feature-grid" style="max-width:480px">
-    <div class="feature-item"><i class="bi bi-pencil-square" aria-hidden="true"></i>&nbsp; Thoughts &amp; Writing</div>
-    <div class="feature-item"><i class="bi bi-person-badge" aria-hidden="true"></i>&nbsp; Anonymous Identities</div>
-    <div class="feature-item"><i class="bi bi-lock" aria-hidden="true"></i>&nbsp; Private by Default</div>
-    <div class="feature-item"><i class="bi bi-people" aria-hidden="true"></i>&nbsp; Curated Members</div>
-</div>
+    <h2 id="about-features">What you can try</h2>
+</section>
+
+<ul class="feature-grid" aria-labelledby="about-features">
+    <li class="feature-item"><i class="bi bi-pencil-square" aria-hidden="true"></i>&nbsp; Write posts and keep drafts private</li>
+    <li class="feature-item"><i class="bi bi-chat-square-text" aria-hidden="true"></i>&nbsp; Talk in The Room in realtime</li>
+    <li class="feature-item"><i class="bi bi-person-badge" aria-hidden="true"></i>&nbsp; Use a pseudonymous profile</li>
+    <li class="feature-item"><i class="bi bi-lock" aria-hidden="true"></i>&nbsp; Keep personal details private</li>
+    <li class="feature-item"><i class="bi bi-image" aria-hidden="true"></i>&nbsp; Share responsive, optimized media</li>
+    <li class="feature-item"><i class="bi bi-bezier2" aria-hidden="true"></i>&nbsp; Notice the small interaction experiments</li>
+</ul>
+
+<section class="about-prose about-details" aria-labelledby="about-references">
+    <h2 id="about-references">Made to learn in public</h2>
+    <p>The visual language mixes CRT nostalgia with 1990s editorial design: newsprint tones, pixel labels, hard shadows, bright registration marks, and typography that makes room for longer reading. The application UI stays modern and restrained so the personality does not get in the way of the words.</p>
+
+    <h2>References and influences</h2>
+    <p>Some interaction ideas were informed by <a href="https://kokonutui.com/" target="_blank" rel="noopener noreferrer">Kokonut UI<span class="visually-hidden"> (opens in a new tab)</span></a>, especially its avatar, dropdown, and loader patterns. The navigation takes a cue from X/Twitter, while post media behavior is informed by social reading experiences such as Reddit and X/Twitter. UI/UX Pro Max, Site Architecture, and HyperFrames guidance also helped shape the design and motion decisions.</p>
+    <p>These are references for learning and discussion. Tommy’s Club does not claim to reproduce their branding or source code.</p>
+</section>
 
 <div class="wf-row mt-4" style="gap:10px">
     <a href="/blog" class="wf-btn cyan" style="display:inline-block">&#x25B8; Read the Posts</a>
@@ -29,3 +42,23 @@
     <a href="/register" class="wf-btn ghost" style="display:inline-block">Request Access</a>
     {{/unless}}
 </div>
+
+<section class="contribute-section" data-contribute-section aria-labelledby="contribute-title">
+    <div class="contribute-copy">
+        <div class="wf-eyebrow">OPEN SOURCE / BUILT IN PUBLIC</div>
+        <h2 id="contribute-title">Thanks for stopping by.</h2>
+        <p>If Tommy’s Club sparked an idea, exposed a bug, or made you want to build alongside it, contributions are welcome. Read the README, explore the code, open an issue, or send a pull request.</p>
+        <a class="github-contribute-link" href="https://github.com/Athen2045/Tommy-s-Club" target="_blank" rel="noopener noreferrer" aria-label="Open Tommy’s Club on GitHub">
+            <img src="/assets/github-mark.png" alt="" aria-hidden="true" width="44" height="44" loading="lazy">
+            <span><strong>Explore Tommy’s Club on GitHub</strong><small>Read the code and contribute <span class="visually-hidden">(opens in a new tab)</span></small></span>
+            <span aria-hidden="true">&#x2197;</span>
+        </a>
+    </div>
+    <div class="contribute-stack" aria-labelledby="built-with-title">
+        <h3 id="built-with-title" class="visually-hidden">Built with</h3>
+        <div><span>TOOLS &amp; SERVICES</span><p>Node.js · Express · Supabase · ImageKit · Quill · Anime.js</p></div>
+        <div><span>LANGUAGES</span><p>JavaScript · Handlebars · HTML · CSS · SQL</p></div>
+        <div><span>DESIGN GUIDANCE</span><p>UI/UX Pro Max · Site Architecture · HyperFrames animation guidance</p></div>
+        <div><span>OPEN-SOURCE LIBRARIES</span><p>Supabase JS · Bootstrap Icons · sanitize-html · Multer · ws</p></div>
+    </div>
+</section>

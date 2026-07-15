@@ -1,179 +1,209 @@
-# Tommy's Club
+# Tommy’s Club
 
-A private, invite-only community platform. Members write posts, react, comment, and chat in real time — all behind a curated approval gate. Built with a 1980s CRT retro aesthetic.
+Tommy’s Club is a small open-source experiment about making a corner of the internet feel a little more human.
 
----
+It is also a passion project and a testing ground. I use it to try out ideas around writing, identity, privacy, community, realtime chat, media uploads, and the small details that make a website feel like a place instead of a dashboard. It is not presented as a finished product or a production-ready social network. It is a place to build, learn, break things, and keep improving.
 
-## Stack
+The login gate keeps its CRT character. Once inside, the application becomes a responsive editorial-pixel space inspired by magazines, 1990s web graphics, and modern social interfaces.
 
-| Layer | Technology |
-|---|---|
+## What you can explore
+
+- Email-verified accounts with terms acceptance and later admin approval or rejection.
+- A blog with categories, drafts, publishing, reactions, threaded comments, and optimized images.
+- The Room, a realtime chat with @mentions and text or image messages.
+- Pseudonymous profiles with avatars, bios, username uniqueness, privacy controls, and account settings.
+- A small admin area for approvals and category management.
+- Responsive navigation, accessible motion, a CRT login gate, and an Anime.js entry transition.
+
+## Tools and technologies
+
+| Area | Tools |
+| --- | --- |
 | Runtime | Node.js |
-| Framework | Express 4 |
-| Templates | Handlebars (express-handlebars) |
-| Database & Auth | Supabase (PostgreSQL + Auth) |
-| Realtime | Supabase Postgres Changes → server-side WebSocket relay |
-| File Storage | ImageKit |
-| Sessions | express-session |
-| Security | helmet, express-rate-limit, sanitize-html |
+| Server | Express 4 |
+| Templates | Handlebars via `express-handlebars` |
+| Languages | JavaScript, HTML, CSS, SQL |
+| Database and auth | Supabase, PostgreSQL, Supabase Auth |
+| Realtime | Supabase Postgres Changes and a server-side WebSocket relay |
+| Media | ImageKit, Multer |
+| Writing UI | Quill |
+| Motion | Anime.js and CSS animations |
+| Icons | Bootstrap Icons |
+| Security | Helmet, `express-rate-limit`, `sanitize-html`, CSRF tokens, RLS |
+| Project tooling | npm, Git, GitHub |
 
----
+## Design references and influences
 
-## Features
+The project borrows visual and interaction cues from several places, while the implementation and content are being developed specifically for Tommy’s Club:
 
-- **Verified-email access** — members enter after email verification; admins can approve or reject membership later
-- **Terms gate** — approved members must accept house rules before entering
-- **Blog** — rich-text posts (Quill editor) with categories, reactions, and threaded comments
-- **The Room** — real-time chat with @mention autocomplete (Mac System 1 aesthetic)
-- **Member profiles** — avatar, bio, post history
-- **Admin panel** — approve / reject pending members, manage categories
-- **CRT UI** — scanlines, neon glow, boot sequence, hamburger nav on mobile
+- CRT terminals and scanline-based login screens.
+- 1990s editorial layouts, newsprint textures, pixel-art labels, hard shadows, and registration marks.
+- X/Twitter-style profile navigation and mobile profile sheets.
+- Reddit and X/Twitter-style feed media behavior, especially responsive image sizing and readable conversation layouts.
+- Avatar, dropdown, and loader ideas from [Kokonut UI](https://kokonutui.com/) and the [Kokonut UI repository](https://github.com/kokonut-labs/kokonutui).
+- UI/UX Pro Max for design-system exploration, Site Architecture for information structure, and HyperFrames guidance for motion decisions.
 
----
+These are references and learning influences, not a claim that the project reproduces their code or branding.
 
-## Setup
+## Run it locally
 
-### 1. Clone and install
+### Prerequisites
+
+- Node.js 20 or newer.
+- A Supabase project with the application tables, authentication, RLS, and deny-direct-client policies configured.
+- An ImageKit account and URL endpoint for profile, post, and chat images.
+- Git, if you plan to contribute.
+
+### Install
+
+Clone the repository and install dependencies:
 
 ```bash
-git clone <repository-url>
-cd "Tommy's Club"
+git clone https://github.com/Athen2045/Tommy-s-Club.git
+cd Tommy-s-Club
 npm install
 ```
 
-### 2. Environment variables
+For SSH:
 
-Copy the example file and fill in your credentials:
+```bash
+git clone git@github.com:Athen2045/Tommy-s-Club.git
+cd Tommy-s-Club
+npm install
+```
+
+### Configure the environment
+
+Copy the example file and fill in your own values:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Description |
-|---|---|
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `SUPABASE_SERVICE_KEY` | Supabase service role key (server-only) |
-| `SESSION_SECRET` | Long random string — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `IMAGEKIT_PUBLIC_KEY` | ImageKit public key |
-| `IMAGEKIT_PRIVATE_KEY` | ImageKit private key |
-| `IMAGEKIT_URL_ENDPOINT` | ImageKit URL endpoint |
-| `ADMIN_EMAIL` | Email address that receives admin privileges on login |
-| `NODE_ENV` | Set to `production` on your server |
+Important variables:
 
-### 3. Run
+| Variable | Purpose |
+| --- | --- |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Public Supabase key for compatibility/configuration |
+| `SUPABASE_SERVICE_KEY` | Server-only service-role key; never expose it to the browser |
+| `SESSION_SECRET` | Random session secret of at least 32 characters in production |
+| `IMAGEKIT_PUBLIC_KEY` | ImageKit public key |
+| `IMAGEKIT_PRIVATE_KEY` | Server-only ImageKit private key |
+| `IMAGEKIT_URL_ENDPOINT` | ImageKit delivery endpoint |
+| `ADMIN_EMAIL` | Account email that receives admin privileges at login |
+| `NODE_ENV` | `development` locally, `production` when deployed |
+| `PORT` | Optional server port; defaults to `8080` |
+
+Do not commit `.env`. The repository includes `.env.example` as the safe template.
+
+### Apply the chat image migration
+
+Before testing chat image attachments, run [`20260715-chat-message-images.sql`](./20260715-chat-message-images.sql) in the Supabase SQL Editor. The migration adds optional image fields, keeps `messages.body` safe, and includes verification queries for constraints, RLS, and policies.
+
+The application expects the server-side service key architecture: browser clients are denied direct access to application tables, while the Express server performs authorized database operations. Do not replace that setup with a public service key or client-side service-role access.
+
+### Start the server
 
 ```bash
-# Development (auto-restart on file changes)
+# Development with Node’s built-in file watcher
 npm run dev
 
-# Production
+# Production-style start
 npm start
+
+# Static verification
+npm run check
 ```
 
-App runs at `http://localhost:8080`
+Open <http://localhost:8080> unless you chose another `PORT`.
 
----
+## Fork and contribute
 
-## Project Structure
+The canonical repository is:
 
-```
+- HTTPS: <https://github.com/Athen2045/Tommy-s-Club>
+- SSH: `git@github.com:Athen2045/Tommy-s-Club.git`
+
+To work from your own fork:
+
+1. Click **Fork** on GitHub.
+2. Clone your fork and enter the project directory:
+
+   ```bash
+   git clone git@github.com:<your-github-name>/Tommy-s-Club.git
+   cd Tommy-s-Club
+   ```
+
+3. Add the canonical project as `upstream`:
+
+   ```bash
+   git remote add upstream git@github.com:Athen2045/Tommy-s-Club.git
+   git remote -v
+   ```
+
+4. Create a focused branch:
+
+   ```bash
+   git switch -c feat/your-change
+   ```
+
+5. Make the change, run `npm run check`, review the diff, and confirm that no `.env` or service keys are included.
+6. Commit the focused change and push it to your fork:
+
+   ```bash
+   git add .
+   git commit -m "Describe the change"
+   git push -u origin feat/your-change
+   ```
+
+7. Open a pull request against `Athen2045/Tommy-s-Club` and explain what you tried, what changed, and anything that still needs attention.
+
+Small experiments, bug reports, design thoughts, documentation fixes, and code are all useful contributions. If a change is large, opening an issue first makes it easier to compare ideas before implementation.
+
+## Project structure
+
+```text
 Tommy's Club/
-├── server.js               # Express app, all routes, WebSocket server, security middleware
-├── auth-service.js         # Supabase Auth — register, login
-├── blog-service.js         # Supabase DB — posts, comments, reactions, chat, profiles
+├── server.js                         # Express routes, middleware, and WebSocket relay
+├── auth-service.js                    # Supabase Auth operations
+├── blog-service.js                    # Posts, comments, reactions, profiles, chat, and categories
+├── 20260715-chat-message-images.sql   # Chat image schema migration and verification queries
+├── username-uniqueness.sql            # Username constraint/query support
 ├── public/
-│   └── css/
-│       └── crt.css         # CRT design system (tokens, layout, animations, responsive)
-├── views/
-│   ├── layouts/
-│   │   ├── main.hbs        # Authenticated layout — topbar, sidebar, CRT frame
-│   │   └── gate.hbs        # Unauthenticated layout — bare CRT screen
-│   ├── login.hbs           # Boot sequence + login form
-│   ├── register.hbs        # Registration form
-│   ├── blog.hbs            # Post feed — THE VAULT
-│   ├── post.hbs            # Post detail — reactions + threaded comments
-│   ├── chat.hbs            # Real-time chat — The Room
-│   ├── profile.hbs         # Edit your profile
-│   ├── member.hbs          # Public member page
-│   ├── posts.hbs           # Dashboard — manage your posts
-│   ├── addPost.hbs         # Write / edit a post
-│   ├── categories.hbs      # Channel list
-│   ├── about.hbs           # About page
-│   ├── pending.hbs         # Membership review status screen
-│   ├── settings.hbs        # Account settings
-│   ├── rejected.hbs        # Rejected screen
-│   ├── terms.hbs           # House rules acceptance
-│   ├── 404.hbs             # Not found
-│   └── admin/
-│       └── approvals.hbs   # Admin approval queue
-├── .env.example            # Environment variable template
-└── package.json
+│   ├── assets/                        # Project-owned image assets
+│   ├── css/
+│   │   ├── crt.css                     # Login and gate visuals
+│   │   └── editorial.css               # Application design system and responsive layout
+│   └── js/
+│       ├── chat.js                     # Realtime chat and image attachments
+│       ├── entry-transition.js         # Login-to-application transition
+│       ├── forms.js                    # Shared form behavior
+│       └── motion.js                   # Small application motion enhancements
+├── views/                             # Handlebars pages and layouts
+├── .env.example                       # Safe environment variable template
+├── .gitignore
+├── LICENSE
+├── package.json
+└── README.md
 ```
 
----
+## Security notes
 
-## Security
+- Session cookies are `httpOnly`, `sameSite: lax`, and secure in production.
+- State-changing form, JSON, and multipart requests use session-bound CSRF tokens.
+- Supabase application tables use RLS and deny direct browser access.
+- `SUPABASE_SERVICE_KEY` and `IMAGEKIT_PRIVATE_KEY` stay server-side.
+- Post and chat content is validated and sanitized before display.
+- Uploads are restricted to supported image MIME types and an 8 MB limit.
+- Ownership checks protect destructive post, comment, message, and account operations.
+- The WebSocket relay keeps Supabase credentials away from the browser.
+- Run `npm audit` before deploying and review any remaining transitive advisories.
 
-| Control | Detail |
-|---|---|
-| Session cookie | `httpOnly`, `sameSite: lax`, `secure` in production |
-| Security headers | `helmet` — CSP, X-Frame-Options, HSTS, referrer policy, and more |
-| Rate limiting | Login: 10 attempts / 15 min · Register: 5 accounts / hour per IP |
-| CSRF | All destructive actions use `POST` forms — `sameSite: lax` blocks cross-site POSTs |
-| XSS — post body | `sanitize-html` allowlist strips event attributes, `javascript:` URIs, unknown tags |
-| XSS — chat | `createTextNode` only — `innerHTML` never used |
-| File uploads | Image MIME types only (JPEG, PNG, GIF, WebP, AVIF), 8 MB max |
-| Ownership checks | Delete post / comment verifies `author_id === userId` or `isAdmin` |
-| Realtime credentials | Supabase anon key never sent to client — WebSocket relay proxies events server-side |
-| Admin | `isAdmin` resolved from `ADMIN_EMAIL` env var at login time |
-| Dependencies | 0 known vulnerabilities (`npm audit`) |
+## Current limitations
 
----
+Tommy’s Club is still experimental. It currently uses a manual Supabase SQL workflow, a single Express server, and a small server-side WebSocket relay. There is no promise of production-scale capacity, polished moderation tooling, or a stable public API yet. Expect the structure and design to change as the experiments continue.
 
-## Routes
+## License
 
-### Public
-| Method | Path | Description |
-|---|---|---|
-| GET | `/` | Redirect to `/blog` |
-| GET | `/blog` | Post feed |
-| GET | `/blog/:id` | Single post |
-| GET | `/about` | About page |
-| GET | `/login` | Login form |
-| POST | `/login` | Authenticate (rate-limited) |
-| GET | `/register` | Registration form |
-| POST | `/register` | Create account (rate-limited) |
-| POST | `/logout` | Destroy session |
-
-### Authenticated
-| Method | Path | Description |
-|---|---|---|
-| GET | `/posts` | Your post dashboard |
-| GET | `/posts/add` | Write a post |
-| POST | `/posts/add` | Submit a post |
-| POST | `/posts/delete/:id` | Delete own post |
-| GET | `/profile` | View / edit profile |
-| POST | `/account/delete` | Re-authenticate and permanently delete your account |
-| GET | `/settings` | Account settings |
-| POST | `/settings/username` | Change username |
-| POST | `/settings/email` | Request an email change |
-| POST | `/settings/password` | Change password |
-| GET | `/member/:username` | Public member profile |
-| GET | `/chat` | Real-time chat |
-| POST | `/chat/send` | Send message |
-| DELETE | `/chat/:id` | Delete own message |
-| POST | `/blog/:id/comments` | Post a comment |
-| POST | `/comments/delete/:id` | Delete own comment |
-| POST | `/blog/:id/react` | Toggle reaction |
-| GET | `/categories` | Channel list |
-
-### Admin only
-| Method | Path | Description |
-|---|---|---|
-| GET | `/admin/approvals` | Pending member queue |
-| POST | `/admin/approvals/:id/approve` | Approve a member |
-| POST | `/admin/approvals/:id/reject` | Reject a member |
-| GET | `/categories/add` | Add channel form |
-| POST | `/categories/add` | Create channel |
-| POST | `/categories/delete/:id` | Delete channel |
+Tommy’s Club is released under the ISC License. See [`LICENSE`](./LICENSE).

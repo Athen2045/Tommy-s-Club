@@ -7,15 +7,19 @@
     style="max-width:760px;display:flex;flex-direction:column;gap:18px">
     <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
+    {{#if errorMessage}}
+    <div class="gate-error" role="alert" tabindex="-1">{{errorMessage}}</div>
+    {{/if}}
+
     <!-- Title -->
     <input type="text" class="post-title-input" id="title" name="title"
-        placeholder="Title (optional)">
+        value="{{formData.title}}" placeholder="Give your story a title" maxlength="160" required>
 
     <!-- Quill editor -->
     <div>
         <div class="wf-label mb-2">Content</div>
         <div id="quill-editor"></div>
-        <textarea name="body" id="bodyField" style="display:none"></textarea>
+        <textarea name="body" id="bodyField" style="display:none">{{formData.body}}</textarea>
     </div>
 
     <!-- Channel + cover image -->
@@ -26,7 +30,7 @@
             <select class="gate-input" name="category" id="category">
                 <option value="">No channel</option>
                 {{#each categories}}
-                <option value="{{id}}">{{name}}</option>
+                <option value="{{id}}" {{#equal id ../formData.category}}selected{{/equal}}>{{name}}</option>
                 {{/each}}
             </select>
             {{else}}
@@ -34,29 +38,24 @@
             {{/if}}
         </div>
         <div class="gate-field" style="flex:1.5">
-            <label class="gate-label">Cover Image (optional)</label>
-            <input class="gate-input" type="file" id="featureImage" name="featureImage"
-                accept="image/*" style="padding:6px 12px;cursor:pointer">
+            <label class="gate-label" for="featureImage">Cover image (optional)</label>
+            <input class="gate-input file-input" type="file" id="featureImage" name="featureImage"
+                accept="image/*">
+            <span class="form-helper">JPEG, PNG, GIF, WebP, or AVIF.</span>
         </div>
     </div>
 
-    <!-- Publish toggle -->
-    <div style="display:flex;align-items:center;gap:10px">
-        <input type="checkbox" id="published" name="published"
-            style="accent-color:var(--neon-pink);width:14px;height:14px">
-        <label class="gate-label" for="published" style="cursor:pointer;letter-spacing:0.12em">
-            Publish immediately
-        </label>
-        <span class="wf-mono" style="font-size:10px;color:var(--ink-faint)">— drafts are private</span>
-    </div>
-
     <!-- Actions -->
-    <div class="wf-row" style="gap:10px">
-        <button type="submit" class="gate-btn" style="width:auto;padding:10px 28px;display:inline-block">
-            &#x25B8; Publish
+    <div class="post-submit-actions">
+        <button type="submit" class="post-action-btn post-action-btn--draft" name="intent" value="draft">
+            <i class="bi bi-floppy" aria-hidden="true"></i> Save Draft
         </button>
-        <a href="/posts" class="gate-btn ghost" style="width:auto;padding:10px 24px;display:inline-block">Cancel</a>
+        <button type="submit" class="post-action-btn post-action-btn--publish" name="intent" value="publish">
+            <i class="bi bi-send" aria-hidden="true"></i> Publish
+        </button>
+        <a href="/posts" class="post-action-cancel">Cancel</a>
     </div>
+    <p class="form-helper post-publish-helper">Drafts remain private until you publish them.</p>
 
 </form>
 
@@ -87,20 +86,24 @@
                             if (!file) return;
                             var fd = new FormData();
                             fd.append('image', file);
-                            fetch('/posts/upload-image', { method: 'POST', headers: { 'X-CSRF-Token': window.CSRF_TOKEN }, body: fd })
-                                .then(function (r) { return r.json(); })
+                            fetch('/posts/upload-image', { method: 'POST', headers: { 'X-CSRF-Token': window.CSRF_TOKEN, 'Accept': 'application/json' }, body: fd })
+                                .then(function (r) { return r.json().then(function (json) { if (!r.ok) throw new Error(json.error || 'Upload failed'); return json; }); })
                                 .then(function (json) {
                                     if (json.url) {
                                         var range = quill.getSelection(true);
                                         quill.insertEmbed(range.index, 'image', json.url);
                                     }
-                                });
+                                })
+                                .catch(function (error) { window.alert(error.message); });
                         };
                     }
                 }
             }
         }
     });
+
+    var initialBody = document.getElementById('bodyField').value;
+    if (initialBody) quill.clipboard.dangerouslyPasteHTML(initialBody);
 
     document.getElementById('postForm').addEventListener('submit', function () {
         document.getElementById('bodyField').value = quill.root.innerHTML;

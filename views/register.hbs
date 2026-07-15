@@ -46,15 +46,23 @@
                 <label class="gate-label" for="registerPassword">Create password</label>
                 <input type="password" name="password" id="registerPassword" class="gate-input"
                     placeholder="8+ chars, uppercase, number, symbol" required minlength="8"
-                    pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
-                    title="Use at least 8 characters, including 1 capital letter, 1 number, and 1 symbol">
+                    pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+                    title="Use at least 8 characters, including uppercase, lowercase, a number, and a symbol"
+                    aria-describedby="passwordRequirements">
+                <ul class="password-requirements" id="passwordRequirements" aria-label="Password requirements">
+                    <li data-password-rule="length"><span class="password-rule-mark" aria-hidden="true"></span>At least 8 characters</li>
+                    <li data-password-rule="uppercase"><span class="password-rule-mark" aria-hidden="true"></span>At least one uppercase letter</li>
+                    <li data-password-rule="lowercase"><span class="password-rule-mark" aria-hidden="true"></span>At least one lowercase letter</li>
+                    <li data-password-rule="number"><span class="password-rule-mark" aria-hidden="true"></span>At least one number</li>
+                    <li data-password-rule="symbol"><span class="password-rule-mark" aria-hidden="true"></span>At least one symbol</li>
+                </ul>
             </div>
 
             <div class="gate-field">
-                <span class="gate-helper">At least 8 characters with 1 capital letter, 1 number, and 1 symbol.</span>
                 <label class="gate-label" for="registerPasswordConfirm">Confirm password</label>
                 <input type="password" name="password2" id="registerPasswordConfirm" class="gate-input"
-                    placeholder="Repeat your password" required minlength="8">
+                    placeholder="Repeat your password" required minlength="8" aria-describedby="passwordMatchStatus">
+                <span class="password-match-status" id="passwordMatchStatus" aria-live="polite"></span>
             </div>
 
             <button type="submit" class="gate-btn">&#x25B8; JOIN TOMMY'S CLUB</button>
@@ -88,12 +96,51 @@
     var password = registerForm && registerForm.querySelector('input[name="password"]');
     var password2 = registerForm && registerForm.querySelector('input[name="password2"]');
     if (registerForm && password && password2) {
-        function confirmPassword() {
-            password2.setCustomValidity(password.value === password2.value ? '' : 'Passwords do not match');
+        var rules = {
+            length: function (value) { return value.length >= 8; },
+            uppercase: function (value) { return /[A-Z]/.test(value); },
+            lowercase: function (value) { return /[a-z]/.test(value); },
+            number: function (value) { return /[0-9]/.test(value); },
+            symbol: function (value) { return /[^A-Za-z0-9]/.test(value); }
+        };
+        var matchStatus = document.getElementById('passwordMatchStatus');
+        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function animateRule(item) {
+            if (reduceMotion || !window.anime || !window.anime.animate) return;
+            window.anime.animate(item, {
+                scale: [0.96, 1],
+                opacity: [0.65, 1],
+                duration: 220,
+                ease: 'out(3)'
+            });
         }
-        password.addEventListener('input', confirmPassword);
+
+        function updateRequirements() {
+            document.querySelectorAll('[data-password-rule]').forEach(function (item) {
+                var met = rules[item.dataset.passwordRule](password.value);
+                var wasMet = item.classList.contains('is-met');
+                item.classList.toggle('is-met', met);
+                item.setAttribute('aria-label', (met ? 'Met: ' : 'Not met: ') + item.textContent.trim());
+                if (met && !wasMet) animateRule(item);
+            });
+        }
+
+        function confirmPassword() {
+            var hasValue = password2.value.length > 0;
+            var matches = password.value === password2.value;
+            password2.setCustomValidity(!hasValue || matches ? '' : 'Passwords do not match');
+            matchStatus.textContent = !hasValue ? '' : (matches ? 'Passwords match.' : 'Passwords do not match.');
+            matchStatus.classList.toggle('is-match', hasValue && matches);
+            matchStatus.classList.toggle('is-error', hasValue && !matches);
+        }
+        password.addEventListener('input', function () {
+            updateRequirements();
+            confirmPassword();
+        });
         password2.addEventListener('input', confirmPassword);
         registerForm.addEventListener('submit', confirmPassword);
+        updateRequirements();
     }
 
 })();

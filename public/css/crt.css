@@ -6,29 +6,29 @@
 
 /* ── DESIGN TOKENS ──────────────────────────────────────────── */
 :root {
-    --crt-void:         #050208;
-    --crt-bezel:        #1a1612;
-    --crt-bezel-edge:   #0a0806;
-    --crt-screen-bg:    #0e0716;
-    --crt-screen-bg-2:  #1a0a26;
+    --crt-void:         #0b0b0d;
+    --crt-bezel:        #242327;
+    --crt-bezel-edge:   #111114;
+    --crt-screen-bg:    #18181b;
+    --crt-screen-bg-2:  #242329;
 
-    --ink:              rgba(255,230,250,0.92);
-    --ink-dim:          rgba(255,230,250,0.55);
-    --ink-faint:        rgba(255,230,250,0.28);
-    --ink-ghost:        rgba(255,230,250,0.12);
+    --ink:              rgba(244,238,223,0.96);
+    --ink-dim:          rgba(244,238,223,0.70);
+    --ink-faint:        rgba(244,238,223,0.48);
+    --ink-ghost:        rgba(244,238,223,0.20);
 
-    --neon-pink:        #ff2bd6;
-    --neon-cyan:        #00f0ff;
-    --neon-red:         #ff5a2c;
-    --neon-blue:        #2bb8ff;
-    --neon-amber:       #ffb84a;
-    --neon-green:       #4cff9c;
+    --neon-pink:        #ec4899;
+    --neon-cyan:        #d9ff43;
+    --neon-red:         #ec4899;
+    --neon-blue:        #2450ff;
+    --neon-amber:       #f4eedf;
+    --neon-green:       #d9ff43;
 
     --f-pixel:          'VT323', monospace;
     --f-mono:           'IBM Plex Mono', monospace;
     --f-hand:           'Caveat', cursive;
 
-    --scanline-opacity: 0.18;
+    --scanline-opacity: 0.12;
     --flicker-strength: 0.04;
     --aberration:       0.7px;
 }
@@ -73,7 +73,8 @@ button { cursor: pointer; }
     overflow: hidden;
     box-shadow:
         0 0 0 2px rgba(255,255,255,0.05),
-        0 0 60px rgba(255,43,214,0.06),
+        6px 6px 0 #2450ff,
+        0 0 60px rgba(236,72,153,0.08),
         inset 0 0 80px rgba(0,0,0,0.5);
     display: flex;
     flex-direction: column;
@@ -199,12 +200,12 @@ button { cursor: pointer; }
         repeating-linear-gradient(
             0deg,
             transparent, transparent 19px,
-            rgba(255,230,250,0.035) 19px, rgba(255,230,250,0.035) 20px
+            rgba(217,255,67,0.045) 19px, rgba(217,255,67,0.045) 20px
         ),
         repeating-linear-gradient(
             90deg,
             transparent, transparent 39px,
-            rgba(255,230,250,0.035) 39px, rgba(255,230,250,0.035) 40px
+            rgba(36,80,255,0.08) 39px, rgba(36,80,255,0.08) 40px
         );
     pointer-events: none;
 }
@@ -232,12 +233,12 @@ button { cursor: pointer; }
     font-family: var(--f-hand);
     font-size: 84px;
     font-weight: 700;
-    color: var(--neon-red);
+    color: var(--neon-pink);
     text-shadow:
-        0 0 8px rgba(255,90,44,0.95),
-        0 0 22px rgba(255,90,44,0.75),
-        0 0 55px rgba(255,90,44,0.4),
-        0 0 110px rgba(255,90,44,0.15);
+        0 0 8px rgba(236,72,153,0.9),
+        0 0 22px rgba(236,72,153,0.65),
+        4px 4px 0 rgba(0,0,0,.7),
+        0 0 70px rgba(236,72,153,0.22);
     animation: neon-flicker-red 4.5s ease-in-out infinite;
     margin-bottom: -8px;
 }
@@ -248,10 +249,10 @@ button { cursor: pointer; }
     letter-spacing: 18px;
     color: var(--neon-blue);
     text-shadow:
-        0 0 7px rgba(43,184,255,0.95),
-        0 0 20px rgba(43,184,255,0.75),
-        0 0 45px rgba(43,184,255,0.4),
-        0 0 90px rgba(43,184,255,0.15);
+        0 0 7px rgba(36,80,255,0.95),
+        0 0 20px rgba(36,80,255,0.75),
+        4px 4px 0 rgba(0,0,0,.75),
+        0 0 70px rgba(36,80,255,0.28);
     animation: neon-flicker-blue 5.5s ease-in-out infinite;
     padding-left: 18px; /* letter-spacing offset */
 }
@@ -275,19 +276,30 @@ button { cursor: pointer; }
 /* ── BOOT SEQUENCE (login page only) ────────────────────────── */
 /* 16s loop: dots (0–2s) → POST text (1.5–3.5s) → sign (2.5–6s) → form (7s+) */
 
-.boot-wrap {
+.login-stage {
     position: absolute;
     inset: 0;
+    z-index: 5;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 28px;
+    gap: clamp(10px, 2svh, 18px);
+    padding: clamp(60px, 8svh, 92px) 24px 28px;
+    overflow-y: auto;
+}
+
+.boot-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: min(620px, 100%);
+    min-height: clamp(138px, 25svh, 210px);
     z-index: 5;
     pointer-events: none;
-    /* shift sign up — leaves bottom 280px clear for login form */
-    padding-bottom: 280px;
 }
+
+.boot-wrap > * { grid-area: 1 / 1; }
 
 .boot-dots {
     display: flex;
@@ -354,11 +366,8 @@ button { cursor: pointer; }
 }
 
 .boot-login {
-    position: absolute;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 310px;
+    position: relative;
+    width: min(360px, 100%);
     pointer-events: auto;
     z-index: 6;
     animation: boot-login-in 4.5s ease-out 1 both;
@@ -372,8 +381,8 @@ button { cursor: pointer; }
     min-width: 96px;
     min-height: 44px;
     padding: 8px 12px;
-    border: 1px solid var(--ink-dim);
-    background: rgba(14,7,22,.82);
+    border: 2px solid var(--ink-dim);
+    background: rgba(24,24,27,.92);
     color: var(--neon-cyan);
     font: 10px var(--f-mono);
     letter-spacing: .08em;
@@ -386,13 +395,13 @@ button { cursor: pointer; }
 .intro-skipped .boot-sign-wrap,
 .intro-skipped .boot-login { animation: none; opacity: 1; }
 .intro-skipped .boot-sign-wrap { transform: scale(1); }
-.intro-skipped .boot-login { transform: translateX(-50%); }
+.intro-skipped .boot-login { transform: none; }
 .intro-skipped .boot-skip { display: none; }
 
 @keyframes boot-login-in {
-    0%, 56%  { opacity: 0; transform: translate(-50%, 18px); }
-    70%      { opacity: 1; transform: translate(-50%, 0); }
-    100%     { opacity: 1; transform: translate(-50%, 0); }
+    0%, 56%  { opacity: 0; transform: translateY(18px); }
+    70%      { opacity: 1; transform: translateY(0); }
+    100%     { opacity: 1; transform: translateY(0); }
 }
 
 /* ── GATE FORM STYLES ───────────────────────────────────────── */
@@ -416,6 +425,13 @@ button { cursor: pointer; }
     background: rgba(0,0,0,0.45);
     border: 1.5px dashed var(--ink-faint);
     padding: 22px;
+}
+
+.boot-login .gate-form {
+    padding: 18px;
+    border: 2px solid var(--ink);
+    background: rgba(24,24,27,.78);
+    box-shadow: 5px 5px 0 var(--neon-blue);
 }
 .gate-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .gate-helper { color: var(--ink-faint); font: 9px/1.45 var(--f-mono); }
@@ -492,13 +508,15 @@ a.gate-btn {
     width: 100%;
     text-align: center;
     background: transparent;
-    border: 1.5px solid var(--neon-pink);
+    min-height: 46px;
+    border: 2px solid var(--neon-pink);
     color: var(--neon-pink);
     font-family: var(--f-pixel);
     font-size: 19px;
     letter-spacing: 2px;
     padding: 10px 24px;
-    transition: background 0.15s, box-shadow 0.15s;
+    box-shadow: 4px 4px 0 var(--neon-blue);
+    transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
     text-decoration: none;
 }
 
@@ -507,6 +525,28 @@ a.gate-btn {
     box-shadow: 0 0 20px rgba(255,43,214,0.25), inset 0 0 6px rgba(255,43,214,0.06);
     color: var(--neon-pink);
 }
+
+.gate-btn:active, a.gate-btn:active { transform: translate(3px, 3px); box-shadow: none; }
+
+.password-requirements {
+    display: grid;
+    gap: 5px;
+    margin: 4px 0 0;
+    padding: 10px 11px;
+    border-left: 2px solid var(--ink-ghost);
+    list-style: none;
+    color: var(--ink-faint);
+    font: 10px/1.4 var(--f-mono);
+}
+.password-requirements li { display: flex; align-items: center; gap: 8px; }
+.password-rule-mark { width: 12px; height: 12px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid currentColor; }
+.password-rule-mark::after { content: ''; width: 5px; height: 3px; border: solid currentColor; border-width: 0 0 2px 2px; transform: rotate(-45deg) translateY(-1px); opacity: 0; }
+.password-requirements li.is-met { color: var(--neon-green); }
+.password-requirements li.is-met .password-rule-mark { background: var(--neon-green); color: var(--crt-screen-bg); border-color: var(--neon-green); }
+.password-requirements li.is-met .password-rule-mark::after { opacity: 1; }
+.password-match-status { min-height: 16px; color: var(--ink-faint); font: 10px/1.4 var(--f-mono); }
+.password-match-status.is-match { color: var(--neon-green); }
+.password-match-status.is-error { color: #ff8a80; }
 
 .gate-btn:disabled {
     opacity: 0.4;
@@ -2451,8 +2491,12 @@ textarea.wf-input { min-height: 100px; resize: vertical; }
     /* Tighter main content padding */
     .crt-main { padding: 12px 14px; }
 
-    /* Boot login form: full width on small screens */
-    .boot-login { width: calc(100% - 32px); }
+    /* Keep logo and form together without sacrificing short screens. */
+    .login-stage { justify-content: flex-start; padding: 62px 16px 22px; }
+    .boot-wrap { min-height: 150px; }
+    .boot-login { width: min(360px, 100%); }
+    .neon-tommys { font-size: clamp(60px, 20vw, 84px); }
+    .neon-club { font-size: clamp(38px, 13vw, 56px); letter-spacing: clamp(10px, 4vw, 18px); }
 
     /* Blog: single column post grid */
     .post-grid { grid-template-columns: 1fr; }
@@ -2486,6 +2530,6 @@ textarea.wf-input { min-height: 100px; resize: vertical; }
     .boot-dots, .boot-text { display: none; }
     .boot-sign-wrap, .boot-login { opacity: 1; }
     .boot-sign-wrap { transform: none; }
-    .boot-login { transform: translateX(-50%); }
+    .boot-login { transform: none; }
     .boot-skip { display: none; }
 }

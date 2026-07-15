@@ -24,7 +24,7 @@
 
     <!-- Feature image -->
     {{#if post.feature_image}}
-    <img src="{{post.feature_image}}" alt="{{post.title}}" class="post-view-img" loading="eager" fetchpriority="high">
+    <img src="{{mediaUrl post.feature_image "post"}}" alt="{{post.title}}" class="post-view-img" loading="eager" fetchpriority="high" width="1600" height="1200">
     {{/if}}
 
     <!-- Body -->

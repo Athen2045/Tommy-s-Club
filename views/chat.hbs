@@ -15,362 +15,61 @@
 
         <div class="chat-panel">
             <div class="chat-messages" id="chatMessages" aria-live="polite">
-                    {{#each messages}}
-                    <div class="chat-msg" data-id="{{id}}" data-author="{{author_id}}">
-                        <div class="chat-msg-avatar">
-                            {{#if profiles.avatar_url}}
-                            <img src="{{profiles.avatar_url}}" alt="" class="chat-avatar-img" loading="lazy">
-                            {{else}}
-                            <span class="chat-avatar-initials">{{avatarInitial profiles.username}}</span>
-                            {{/if}}
-                        </div>
-                        <div class="chat-msg-content">
-                            <div class="chat-msg-meta">
-                                <a href="/member/{{profiles.username}}" class="chat-msg-author">{{profiles.username}}</a>
-                                <span class="chat-msg-time" data-ts="{{created_at}}"></span>
-                            </div>
-                            <div class="chat-msg-body" data-raw="{{body}}"></div>
-                        </div>
-                        <button class="chat-delete-btn" data-msgid="{{id}}" title="Delete message" type="button">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                {{#each messages}}
+                <article class="chat-msg" data-id="{{id}}" data-author="{{author_id}}">
+                    <div class="chat-msg-avatar">
+                        {{#if profiles.avatar_url}}
+                        <img src="{{profiles.avatar_url}}" alt="" class="chat-avatar-img" loading="lazy">
+                        {{else}}
+                        <span class="chat-avatar-initials">{{avatarInitial profiles.username}}</span>
+                        {{/if}}
                     </div>
-                    {{/each}}
+                    <div class="chat-msg-content">
+                        <div class="chat-msg-meta">
+                            <a href="/member/{{profiles.username}}" class="chat-msg-author">{{profiles.username}}</a>
+                            <time class="chat-msg-time" data-ts="{{created_at}}"></time>
+                        </div>
+                        {{#if body}}<div class="chat-msg-body" data-raw="{{body}}"></div>{{/if}}
+                        {{#if image_url}}
+                        <a class="chat-msg-image-link" href="{{mediaUrl image_url "post"}}" target="_blank" rel="noopener noreferrer" aria-label="Open image from {{profiles.username}}">
+                            <img class="chat-msg-image" src="{{mediaUrl image_url "chat"}}" alt="Image shared by {{profiles.username}}" loading="lazy" width="320" height="320">
+                        </a>
+                        {{/if}}
+                    </div>
+                    <button class="chat-delete-btn" data-msgid="{{id}}" title="Delete message" aria-label="Delete message" type="button">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                    </button>
+                </article>
+                {{/each}}
             </div>
 
             <div class="mention-dropdown" id="mentionDropdown" role="listbox"></div>
 
             <div class="chat-composer">
-                <label class="visually-hidden" for="chatInput">Message the room</label>
-                <textarea id="chatInput" class="chat-input" placeholder="Message the room… Use @ to mention someone"
-                    rows="1" maxlength="2000"></textarea>
-                <button class="chat-send-btn" id="chatSendBtn" type="button">Send</button>
+                <div class="chat-image-preview" id="chatImagePreview" hidden>
+                    <img id="chatImagePreviewImg" alt="Selected image preview">
+                    <div>
+                        <strong id="chatImageName"></strong>
+                        <span>Compressed for the room when sent</span>
+                    </div>
+                    <button id="chatImageRemove" type="button" aria-label="Remove selected image"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                </div>
+                <div class="chat-composer-row">
+                    <label class="chat-image-picker" for="chatImageInput" title="Add an image">
+                        <i class="bi bi-image" aria-hidden="true"></i>
+                        <span class="visually-hidden">Add an image</span>
+                    </label>
+                    <input class="visually-hidden" id="chatImageInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif">
+                    <label class="visually-hidden" for="chatInput">Message the room</label>
+                    <textarea id="chatInput" class="chat-input gate-input" placeholder="Message the room… Use @ to mention someone"
+                        rows="1" maxlength="2000"></textarea>
+                    <button class="chat-send-btn" id="chatSendBtn" type="button">Send</button>
+                </div>
                 <span class="chat-feedback" id="chatFeedback" aria-live="polite"></span>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Render members in sidebar -->
-<script>
-(function () {
-    var members = {{{membersJson}}};
-    var list = document.getElementById('membersList');
-    if (list && members) {
-        members.forEach(function (name) {
-            var item = document.createElement('div');
-            item.className = 'chat-member-item';
-            item.textContent = name;
-            list.appendChild(item);
-        });
-    }
-})();
-</script>
-
-<script>
-(function () {
-    'use strict';
-
-    var CURRENT_USER_ID  = '{{currentUserId}}';
-    var CURRENT_USERNAME = '{{currentUsername}}';
-    var IS_ADMIN         = {{#if isAdmin}}true{{else}}false{{/if}};
-    var members          = {{{membersJson}}};
-    var container = document.getElementById('chatMessages');
-    var inputEl   = document.getElementById('chatInput');
-    var sendBtn   = document.getElementById('chatSendBtn');
-    var dropdown  = document.getElementById('mentionDropdown');
-    var feedback  = document.getElementById('chatFeedback');
-
-    var mentionStart = -1;
-
-    // ── Helpers ───────────────────────────────────────────
-
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
-
-    function formatTime(ts) {
-        if (!ts) return '';
-        var d   = new Date(ts);
-        var now = new Date();
-        var sameDay = d.toDateString() === now.toDateString();
-        if (sameDay) {
-            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        }
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-               d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function scrollToBottom() {
-        container.scrollTop = container.scrollHeight;
-    }
-
-    function autoResize() {
-        inputEl.style.height = 'auto';
-        inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + 'px';
-    }
-
-    // ── Render body text with @mention links (XSS-safe) ──
-    function renderBodyInto(el, rawText) {
-        el.textContent = '';
-        var escaped = escapeHtml(rawText);
-        var parts   = escaped.split(/(@\w+)/g);
-        parts.forEach(function (part) {
-            var mentionMatch = part.match(/^@(\w+)$/);
-            if (mentionMatch) {
-                var alias = mentionMatch[1];
-                var found = members.find(function (m) {
-                    return m.toLowerCase() === alias.toLowerCase();
-                });
-                if (found) {
-                    var a = document.createElement('a');
-                    a.href      = '/member/' + found;
-                    a.className = 'chat-mention';
-                    a.textContent = '@' + found;
-                    el.appendChild(a);
-                    return;
-                }
-            }
-            el.appendChild(document.createTextNode(part));
-        });
-    }
-
-    // ── Build a message DOM element ───────────────────────
-    function buildMsgEl(msg) {
-        var isOwn  = msg.author_id === CURRENT_USER_ID;
-        var canDel = isOwn || IS_ADMIN;
-
-        var outer = document.createElement('div');
-        outer.className       = 'chat-msg';
-        outer.dataset.id      = msg.id;
-        outer.dataset.author  = msg.author_id;
-
-        var avatarDiv = document.createElement('div');
-        avatarDiv.className = 'chat-msg-avatar';
-        if (msg.avatar_url) {
-            var img = document.createElement('img');
-            img.src       = msg.avatar_url;
-            img.alt       = '';
-            img.className = 'chat-avatar-img';
-            img.loading   = 'lazy';
-            avatarDiv.appendChild(img);
-        } else {
-            var initSpan = document.createElement('span');
-            initSpan.className   = 'chat-avatar-initials';
-            initSpan.textContent = (msg.username || '?')[0].toUpperCase();
-            avatarDiv.appendChild(initSpan);
-        }
-        outer.appendChild(avatarDiv);
-
-        var contentDiv = document.createElement('div');
-        contentDiv.className = 'chat-msg-content';
-
-        var metaDiv = document.createElement('div');
-        metaDiv.className = 'chat-msg-meta';
-
-        var authorLink = document.createElement('a');
-        authorLink.href       = '/member/' + (msg.username || '');
-        authorLink.className  = 'chat-msg-author';
-        authorLink.textContent = msg.username || 'unknown';
-        metaDiv.appendChild(authorLink);
-
-        var timeSpan = document.createElement('span');
-        timeSpan.className   = 'chat-msg-time';
-        timeSpan.textContent = formatTime(msg.created_at);
-        metaDiv.appendChild(timeSpan);
-
-        contentDiv.appendChild(metaDiv);
-
-        var bodyDiv = document.createElement('div');
-        bodyDiv.className = 'chat-msg-body';
-        renderBodyInto(bodyDiv, msg.body || '');
-        contentDiv.appendChild(bodyDiv);
-
-        outer.appendChild(contentDiv);
-
-        if (canDel) {
-            var delBtn = document.createElement('button');
-            delBtn.className = 'chat-delete-btn';
-            delBtn.title     = 'Delete message';
-            delBtn.dataset.msgid = msg.id;
-            delBtn.setAttribute('type', 'button');
-            var icon = document.createElement('i');
-            icon.className = 'bi bi-trash';
-            delBtn.appendChild(icon);
-            outer.appendChild(delBtn);
-        }
-
-        return outer;
-    }
-
-    // ── Render existing messages on load ──────────────────
-    container.querySelectorAll('.chat-msg').forEach(function (el) {
-        var bodyEl  = el.querySelector('.chat-msg-body');
-        var timeEl  = el.querySelector('.chat-msg-time');
-        var delBtn  = el.querySelector('.chat-delete-btn');
-        var isOwn   = el.dataset.author === CURRENT_USER_ID;
-        var canDel  = isOwn || IS_ADMIN;
-
-        if (bodyEl) renderBodyInto(bodyEl, bodyEl.dataset.raw || '');
-        if (timeEl && timeEl.dataset.ts) timeEl.textContent = formatTime(timeEl.dataset.ts);
-        if (delBtn && !canDel) delBtn.remove();
-    });
-
-    var lastMsgEl = container.querySelector('.chat-msg:last-child');
-    if (lastMsgEl) localStorage.setItem('tommys_club_last_msg', lastMsgEl.dataset.id);
-
-    scrollToBottom();
-
-    // ── WebSocket relay (Supabase key stays server-side) ──
-    function connectWS() {
-        fetch('/chat/ws-token')
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                var proto = location.protocol === 'https:' ? 'wss' : 'ws';
-                var ws = new WebSocket(proto + '://' + location.host + '/chat/ws?token=' + d.token);
-
-                ws.onmessage = function (e) {
-                    try {
-                        var msg = JSON.parse(e.data);
-                        if (msg.type === 'message') {
-                            container.appendChild(buildMsgEl(msg));
-                            localStorage.setItem('tommys_club_last_msg', String(msg.id));
-                            scrollToBottom();
-                        }
-                    } catch (_) {}
-                };
-
-                ws.onclose = function (e) {
-                    // Reconnect after 3s unless server said unauthorized
-                    if (e.code !== 4001) setTimeout(connectWS, 3000);
-                };
-
-                ws.onerror = function () {};
-            })
-            .catch(function () { setTimeout(connectWS, 5000); });
-    }
-
-    connectWS();
-
-    // ── Send message ──────────────────────────────────────
-    function sendMessage() {
-        var body = inputEl.value.trim();
-        if (!body || sendBtn.disabled) return;
-        inputEl.value = '';
-        autoResize();
-        closeMentionDropdown();
-        feedback.textContent = '';
-        sendBtn.disabled = true;
-        sendBtn.setAttribute('aria-busy', 'true');
-        sendBtn.textContent = 'Sending…';
-        fetch('/chat/send', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
-            body:    JSON.stringify({ body: body })
-        }).then(function (response) {
-            if (!response.ok) return response.json().then(function (data) { throw new Error(data.error || 'Message could not be sent'); });
-        }).catch(function (error) {
-            if (!inputEl.value) inputEl.value = body;
-            autoResize();
-            feedback.textContent = error.message || 'Message could not be sent. Try again.';
-        }).finally(function () {
-            sendBtn.disabled = false;
-            sendBtn.removeAttribute('aria-busy');
-            sendBtn.textContent = 'Send';
-        });
-    }
-
-    sendBtn.addEventListener('click', sendMessage);
-
-    inputEl.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (dropdown.style.display === 'block') {
-                var active = dropdown.querySelector('.mention-item.active');
-                if (active) { active.click(); return; }
-            }
-            sendMessage();
-        }
-        if (e.key === 'Escape') closeMentionDropdown();
-    });
-
-    // ── Delete message ────────────────────────────────────
-    container.addEventListener('click', function (e) {
-        var btn = e.target.closest('.chat-delete-btn');
-        if (!btn) return;
-        if (!confirm('Delete this message?')) return;
-        var msgId = btn.dataset.msgid;
-        fetch('/chat/' + msgId, { method: 'DELETE', headers: { 'X-CSRF-Token': window.CSRF_TOKEN } })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.ok) {
-                    var msgEl = container.querySelector('.chat-msg[data-id="' + msgId + '"]');
-                    if (msgEl) msgEl.remove();
-                }
-            });
-    });
-
-    // ── @mention autocomplete ─────────────────────────────
-    function closeMentionDropdown() {
-        dropdown.style.display = 'none';
-        dropdown.textContent   = '';
-        mentionStart = -1;
-    }
-
-    function insertMention(username) {
-        var val    = inputEl.value;
-        var before = val.slice(0, mentionStart);
-        var after  = val.slice(inputEl.selectionStart);
-        inputEl.value = before + '@' + username + ' ' + after;
-        inputEl.focus();
-        closeMentionDropdown();
-    }
-
-    inputEl.addEventListener('input', function () {
-        autoResize();
-        var val    = inputEl.value;
-        var pos    = inputEl.selectionStart;
-        var before = val.slice(0, pos);
-        var match  = before.match(/@(\w*)$/);
-        if (!match) { closeMentionDropdown(); return; }
-
-        mentionStart = before.lastIndexOf('@');
-        var query    = match[1].toLowerCase();
-        var filtered = members.filter(function (m) {
-            return m.toLowerCase().startsWith(query);
-        }).slice(0, 6);
-
-        if (!filtered.length) { closeMentionDropdown(); return; }
-
-        dropdown.textContent = '';
-        filtered.forEach(function (name, i) {
-            var item = document.createElement('div');
-            item.className   = 'mention-item' + (i === 0 ? ' active' : '');
-            item.setAttribute('role', 'option');
-            item.setAttribute('aria-selected', String(i === 0));
-            item.textContent = name;
-            item.addEventListener('click', function () { insertMention(name); });
-            item.addEventListener('mouseover', function () {
-                dropdown.querySelectorAll('.mention-item').forEach(function (el) {
-                    el.classList.remove('active');
-                    el.setAttribute('aria-selected', 'false');
-                });
-                item.classList.add('active');
-                item.setAttribute('aria-selected', 'true');
-            });
-            dropdown.appendChild(item);
-        });
-        dropdown.style.display = 'block';
-    });
-
-    document.addEventListener('click', function (e) {
-        if (!dropdown.contains(e.target) && e.target !== inputEl) {
-            closeMentionDropdown();
-        }
-    });
-})();
-</script>
+<script type="application/json" id="chatConfig">{{{chatConfigJson}}}</script>
+<script src="/js/chat.js" defer></script>

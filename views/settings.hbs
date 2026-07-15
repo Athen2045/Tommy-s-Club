@@ -49,7 +49,7 @@
     <section class="settings-card">
         <div class="settings-card-kicker">SECURITY</div>
         <h2>Change password</h2>
-        <p>Use at least 8 characters, including 1 capital letter, 1 number, and 1 symbol.</p>
+        <p>Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.</p>
         <form method="POST" action="/settings/password" class="settings-form">
             <input type="hidden" name="_csrf" value="{{csrfToken}}">
             <label class="gate-label" for="password-current">Current password</label>
@@ -58,8 +58,8 @@
             <label class="gate-label" for="settings-new-password">New password</label>
             <input class="gate-input" id="settings-new-password" name="new_password"
                 type="password" minlength="8" autocomplete="new-password"
-                pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
-                title="Use at least 8 characters, including 1 capital letter, 1 number, and 1 symbol" required>
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+                title="Use at least 8 characters, including uppercase, lowercase, a number, and a symbol" required>
             <label class="gate-label" for="settings-confirm-password">Confirm new password</label>
             <input class="gate-input" id="settings-confirm-password" name="new_password2"
                 type="password" minlength="8" autocomplete="new-password" required>
@@ -70,8 +70,15 @@
     <section class="settings-card settings-card--danger">
         <div class="settings-card-kicker">IRREVERSIBLE</div>
         <h2>Delete account</h2>
-        <p>Remove your account and member data permanently.</p>
-        <a class="settings-danger-link" href="/profile">Manage account deletion &#x2192;</a>
+        <p>This permanently removes your profile, posts, comments, reactions, and messages.</p>
+        <form method="POST" action="/account/delete" class="settings-form"
+            onsubmit="return confirm('Permanently delete your account and all member data? This cannot be undone.')">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <label class="gate-label" for="delete-current-password">Confirm with your current password</label>
+            <input class="gate-input" id="delete-current-password" name="current_password"
+                type="password" autocomplete="current-password" required>
+            <button class="gate-btn settings-btn settings-delete-btn" type="submit">Delete Account Permanently</button>
+        </form>
     </section>
 </div>
 

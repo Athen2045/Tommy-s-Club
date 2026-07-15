@@ -35,7 +35,7 @@
     {{#if featuredPost}}
     <a href="/blog/{{featuredPost.id}}" class="post-card">
         {{#if featuredPost.feature_image}}
-        <img src="{{featuredPost.feature_image}}" alt="{{featuredPost.title}}" class="post-card-img" loading="eager" fetchpriority="high">
+        <img src="{{mediaUrl featuredPost.feature_image "feed"}}" alt="{{featuredPost.title}}" class="post-card-img" loading="eager" fetchpriority="high" width="960" height="720">
         {{/if}}
         {{#if featuredPost.categories}}
         <span class="post-card-cat">{{featuredPost.categories.name}}</span>
@@ -48,6 +48,9 @@
             <span>{{timeAgo featuredPost.created_at}}</span>
             <span>&middot;</span>
             <span>{{readTime featuredPost.body}}</span>
+            <span class="post-card-comments" aria-label="{{featuredPost.comment_count}} comments">
+                <img src="/assets/comment-mark.png" alt="" aria-hidden="true">{{featuredPost.comment_count}}
+            </span>
         </div>
     </a>
     {{/if}}
@@ -56,7 +59,7 @@
     {{#each recentPosts}}
     <a href="/blog/{{id}}" class="post-card">
         {{#if feature_image}}
-        <img src="{{feature_image}}" alt="{{title}}" class="post-card-img" loading="lazy">
+        <img src="{{mediaUrl feature_image "feed"}}" alt="{{title}}" class="post-card-img" loading="lazy" width="960" height="720">
         {{/if}}
         {{#if categories}}
         <span class="post-card-cat">{{categories.name}}</span>
@@ -69,6 +72,9 @@
             <span>{{timeAgo created_at}}</span>
             <span>&middot;</span>
             <span>{{readTime body}}</span>
+            <span class="post-card-comments" aria-label="{{comment_count}} comments">
+                <img src="/assets/comment-mark.png" alt="" aria-hidden="true">{{comment_count}}
+            </span>
         </div>
     </a>
     {{/each}}

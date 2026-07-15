@@ -1,25 +1,25 @@
 <main class="entry-transition" aria-labelledby="entryTitle" aria-describedby="entrySubtitle" aria-live="polite">
-    <div class="entry-loader" aria-hidden="true">
-        <span class="entry-ring entry-ring--outer"></span>
-        <span class="entry-ring entry-ring--primary"></span>
-        <span class="entry-ring entry-ring--reverse"></span>
-        <span class="entry-ring entry-ring--pixel"></span>
-        <span class="entry-loader-mark">TC</span>
+    <div class="entry-handoff" aria-hidden="true">
+        <div class="entry-crt-wordmark" data-entry-wordmark>
+            T<span class="entry-zoom-letter" data-entry-o>o</span>mmy's <b>CLUB</b>
+        </div>
+        <span class="entry-crt-status">ACCESS GRANTED / OPENING CLUB</span>
     </div>
-    <div class="entry-copy">
-        <span class="entry-kicker">MEMBER ACCESS / 01</span>
-        <h1 id="entryTitle">Opening Tommy's Club</h1>
-        <p id="entrySubtitle">Setting the page for today’s stories.</p>
+    <div class="entry-loader-stage" data-entry-loader>
+        <div class="entry-loader" aria-hidden="true">
+            <span class="entry-ring entry-ring--outer"></span>
+            <span class="entry-ring entry-ring--primary"></span>
+            <span class="entry-ring entry-ring--reverse"></span>
+            <span class="entry-ring entry-ring--pixel"></span>
+            <span class="entry-loader-mark">TC</span>
+        </div>
+        <div class="entry-copy">
+            <span class="entry-kicker">MEMBER ACCESS / 01</span>
+            <h1 id="entryTitle">Opening Tommy's Club</h1>
+            <p id="entrySubtitle">Setting the page for today’s stories.</p>
+        </div>
     </div>
     <div class="pixel-wipe" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
     </div>
 </main>
-<script>
-(function () {
-    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var root = document.querySelector('.entry-transition');
-    window.setTimeout(function () { root.classList.add('is-leaving'); }, reduced ? 80 : 1450);
-    window.setTimeout(function () { window.location.replace('/blog'); }, reduced ? 180 : 1850);
-})();
-</script>

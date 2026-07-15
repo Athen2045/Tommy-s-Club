@@ -25,7 +25,7 @@
             <div class="cat-slug">/{{slug}}</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px">
-            <span class="cat-count">{{postCount}} post{{#gt postCount 1}}s{{/gt}}</span>
+            <span class="cat-count">{{postCount}} {{pluralize postCount "post" "posts"}}</span>
             {{#if ../session.user.isAdmin}}
             <form method="POST" action="/categories/delete/{{id}}"
                 style="display:inline"

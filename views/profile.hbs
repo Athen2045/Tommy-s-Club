@@ -22,7 +22,7 @@
         {{/if}}
         <div>
             <div class="profile-username">{{profile.username}}</div>
-            <div class="profile-since">{{session.user.email}}</div>
+            <div class="profile-since">Club member</div>
         </div>
     </div>
 
@@ -65,8 +65,8 @@
                         <span class="avatar-choice-check" aria-hidden="true">&#x2713;</span>
                     </label>
                 </div>
-                <input type="file" class="gate-input" id="profileAvatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
-                    style="padding:6px 12px;cursor:pointer">
+                <input type="file" class="gate-input file-input" id="profileAvatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif">
+                <span class="form-helper">Choose a JPEG, PNG, GIF, WebP, or AVIF image.</span>
             </div>
         </div>
         <button type="submit" class="gate-btn" style="width:auto;padding:10px 28px;display:inline-block">
@@ -74,24 +74,6 @@
         </button>
     </form>
 
-    <section class="danger-zone">
-        <h2 class="wf-h2" style="color:var(--neon-red);font-size:18px">Delete Account</h2>
-        <p class="wf-mono" style="font-size:11px;color:var(--ink-faint);margin:8px 0 14px">
-            This permanently deletes your account, profile, posts, comments, reactions, and messages.
-        </p>
-        <form method="POST" action="/account/delete" class="wf-stack" style="gap:12px"
-              onsubmit="return confirm('Permanently delete your account and all member data? This cannot be undone.')">
-            <input type="hidden" name="_csrf" value="{{csrfToken}}">
-            <div class="gate-field">
-                <label class="gate-label" for="current-password">Confirm with your password</label>
-                <input type="password" class="gate-input" id="current-password" name="current_password"
-                    required autocomplete="current-password">
-            </div>
-            <button type="submit" class="gate-btn" style="width:auto;padding:10px 28px;display:inline-block;background:var(--neon-red);color:#160600">
-                &#x25B8; Delete Account Permanently
-            </button>
-        </form>
-    </section>
 </div>
 
 <script>

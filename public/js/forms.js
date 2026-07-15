@@ -28,7 +28,7 @@
         document.querySelectorAll('form').forEach(function (form) {
             form.addEventListener('submit', function (event) {
                 if (!form.checkValidity()) return;
-                var submit = form.querySelector('button[type="submit"], input[type="submit"]');
+                var submit = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
                 if (!submit) return;
                 window.setTimeout(function () {
                     if (event.defaultPrevented) return;

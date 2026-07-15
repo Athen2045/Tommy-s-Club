@@ -27,6 +27,16 @@ async function attachProfiles(rows) {
     return rows.map(r => ({ ...r, profiles: map[r.author_id] || null }));
 }
 
+function normalizeCommentCounts(rows) {
+    return (rows || []).map(row => ({
+        ...row,
+        comment_count: Array.isArray(row.comments) && row.comments[0]
+            ? Number(row.comments[0].count || 0)
+            : 0,
+        comments: undefined
+    }));
+}
+
 module.exports.initialize = () => Promise.resolve();
 
 // ── Posts ─────────────────────────────────────────────────
@@ -34,31 +44,31 @@ module.exports.initialize = () => Promise.resolve();
 module.exports.getAllPosts = async () => {
     const { data, error } = await supabase
         .from('posts')
-        .select('*, categories(id, name, slug)')
+        .select('*, categories(id, name, slug), comments(count)')
         .order('created_at', { ascending: false });
     if (error) throw new Error('no results returned');
-    return attachProfiles(data);
+    return attachProfiles(normalizeCommentCounts(data));
 };
 
 module.exports.getPublishedPosts = async () => {
     const { data, error } = await supabase
         .from('posts')
-        .select('*, categories(id, name, slug)')
+        .select('*, categories(id, name, slug), comments(count)')
         .eq('published', true)
         .order('created_at', { ascending: false });
     if (error) throw new Error('no results returned');
-    return attachProfiles(data);
+    return attachProfiles(normalizeCommentCounts(data));
 };
 
 module.exports.getPublishedPostsByCategory = async (categoryId) => {
     const { data, error } = await supabase
         .from('posts')
-        .select('*, categories(id, name, slug)')
+        .select('*, categories(id, name, slug), comments(count)')
         .eq('published', true)
         .eq('category_id', categoryId)
         .order('created_at', { ascending: false });
     if (error) throw new Error('no results returned');
-    return attachProfiles(data);
+    return attachProfiles(normalizeCommentCounts(data));
 };
 
 module.exports.getPostsByCategory = async (categoryId) => {
@@ -99,7 +109,7 @@ module.exports.addPost = async (postData, authorId) => {
         body: postData.body,
         excerpt: postData.body ? postData.body.replace(/<[^>]*>/g, '').slice(0, 200) : null,
         feature_image: postData.featureImage || null,
-        published: postData.published === 'on' || postData.published === true,
+        published: postData.published === true,
         category_id: postData.category || null,
         author_id: authorId
     };
@@ -139,12 +149,26 @@ module.exports.deletePostById = async (id) => {
 // ── Categories ────────────────────────────────────────────
 
 module.exports.getCategories = async () => {
-    const { data, error } = await supabase
+    const [{ data: categories, error }, { data: publishedPosts, error: postsError }] = await Promise.all([
+        supabase
         .from('categories')
         .select('*')
-        .order('name');
-    if (error) throw new Error('no results returned');
-    return data;
+        .order('name'),
+        supabase
+            .from('posts')
+            .select('category_id')
+            .eq('published', true)
+    ]);
+    if (error || postsError) throw new Error('no results returned');
+
+    const counts = (publishedPosts || []).reduce((result, post) => {
+        if (post.category_id !== null) result[post.category_id] = (result[post.category_id] || 0) + 1;
+        return result;
+    }, {});
+    return (categories || []).map(category => ({
+        ...category,
+        postCount: counts[category.id] || 0
+    }));
 };
 
 module.exports.addCategory = async (categoryData) => {
@@ -325,20 +349,26 @@ module.exports.getMessageHistory = async (limit) => {
     limit = limit || 100;
     const { data, error } = await supabase
         .from('messages')
-        .select('id, body, author_id, created_at')
+        .select('id, body, image_url, author_id, created_at')
         .order('created_at', { ascending: false })
         .limit(limit);
     if (error) return [];
     return attachProfiles((data || []).reverse());
 };
 
-module.exports.insertMessage = async (authorId, body) => {
-    var text = (body || '').trim();
-    if (!text) throw new Error('message cannot be empty');
+module.exports.insertMessage = async (authorId, body, media) => {
+    const text = typeof body === 'string' ? body.trim() : '';
+    const imageUrl = media?.imageUrl || null;
+    if (!text && !imageUrl) throw new Error('Add a message or an image');
     if (text.length > 2000) throw new Error('message too long');
     const { data, error } = await supabase
         .from('messages')
-        .insert({ author_id: authorId, body: text })
+        .insert({
+            author_id: authorId,
+            body: text || null,
+            image_url: imageUrl,
+            image_file_id: media?.imageFileId || null
+        })
         .select('id, created_at')
         .single();
     if (error) throw new Error('unable to send message');
@@ -347,11 +377,12 @@ module.exports.insertMessage = async (authorId, body) => {
 
 module.exports.deleteMessage = async (messageId, requesterId, isAdmin) => {
     const { data: msg } = await supabase
-        .from('messages').select('author_id').eq('id', messageId).single();
+        .from('messages').select('author_id, image_file_id').eq('id', messageId).single();
     if (!msg) throw new Error('message not found');
     if (!isAdmin && msg.author_id !== requesterId) throw new Error('not authorised');
     const { error } = await supabase.from('messages').delete().eq('id', messageId);
     if (error) throw new Error('unable to delete message');
+    return msg;
 };
 
 module.exports.getLatestMessageId = async () => {

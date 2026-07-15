@@ -43,6 +43,18 @@ const upload = multer({
     }
 });
 
+function parseImageUpload(fieldName) {
+    const middleware = upload.single(fieldName);
+    return (req, res, next) => middleware(req, res, (err) => {
+        if (err) {
+            req.uploadError = err.code === 'LIMIT_FILE_SIZE'
+                ? 'Image must be 8 MB or smaller.'
+                : err.message;
+        }
+        next();
+    });
+}
+
 // ── Handlebars ────────────────────────────────────────────
 app.engine('.hbs', exphbs.engine({
     extname: '.hbs',
@@ -107,6 +119,21 @@ app.engine('.hbs', exphbs.engine({
         avatarInitial(username) {
             return username ? username[0].toUpperCase() : '?';
         },
+        pluralize(count, singular, plural) {
+            return Number(count) === 1 ? singular : (plural || `${singular}s`);
+        },
+        mediaUrl(src, preset) {
+            if (!src || typeof src !== 'string') return '';
+            const transforms = {
+                feed: 'w-960,h-960,c-at_max,q-80,f-auto',
+                post: 'w-1600,h-1600,c-at_max,q-82,f-auto',
+                chat: 'w-320,h-320,c-at_max,q-78,f-auto'
+            };
+            const transform = transforms[preset];
+            if (!transform || !process.env.IMAGEKIT_URL_ENDPOINT ||
+                !src.startsWith(process.env.IMAGEKIT_URL_ENDPOINT)) return src;
+            return `${src}${src.includes('?') ? '&' : '?'}tr=${transform}`;
+        },
         gt(a, b) { return a > b; },
         inc(n) { return n + 1; }
     }
@@ -166,17 +193,31 @@ app.use(session({
 
 // Browser state-changing requests must carry a token issued to this session.
 // This protects form and fetch endpoints against cross-site request forgery.
+const multipartCsrfPaths = new Set(['/posts/add', '/posts/upload-image', '/profile', '/chat/send']);
+
+function csrfTokenIsValid(req) {
+    const supplied = req.get('x-csrf-token') || req.body?._csrf;
+    const expected = req.session.csrfToken;
+    return typeof supplied === 'string' && typeof expected === 'string' &&
+        supplied.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}
+
+function verifyCsrfToken(req, res, next) {
+    if (csrfTokenIsValid(req)) return next();
+    if (req.accepts('json') && !req.accepts('html')) {
+        return res.status(403).json({ error: 'Invalid request token. Refresh the page and try again.' });
+    }
+    return res.status(403).send('Invalid request token. Refresh the page and try again.');
+}
+
 app.use((req, res, next) => {
     if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
     res.locals.csrfToken = req.session.csrfToken;
 
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-    const supplied = req.get('x-csrf-token') || req.body?._csrf;
-    if (!supplied || supplied.length !== req.session.csrfToken.length ||
-        !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrfToken))) {
-        return res.status(403).send('Invalid request token');
-    }
-    next();
+    if (req.is('multipart/form-data') && multipartCsrfPaths.has(req.path)) return next();
+    return verifyCsrfToken(req, res, next);
 });
 
 // Make session available to all templates
@@ -259,6 +300,23 @@ function streamUpload(req, folder = 'blog') {
         fileName,
         folder:   `/${folder}`
     });
+}
+
+function transformedImageUrl(url, preset) {
+    const transforms = {
+        post: 'w-1600,h-1600,c-at_max,q-82,f-auto',
+        chat: 'w-320,h-320,c-at_max,q-78,f-auto'
+    };
+    if (!url || !transforms[preset] || !process.env.IMAGEKIT_URL_ENDPOINT ||
+        !url.startsWith(process.env.IMAGEKIT_URL_ENDPOINT)) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}tr=${transforms[preset]}`;
+}
+
+function safeJson(value) {
+    return JSON.stringify(value)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026');
 }
 
 // ── Routes: public ────────────────────────────────────────
@@ -433,9 +491,7 @@ app.post('/account/delete', ensureLogin, async (req, res) => {
         await authService.deleteUserAccount(req.session.user.id);
         req.session.destroy(() => res.redirect('/login?deleted=1'));
     } catch (err) {
-        const profile = await blogService.getProfile(req.session.user.id).catch(() => req.session.user);
-        res.status(400).render('profile', {
-            profile,
+        res.status(400).render('settings', {
             errorMessage: err.message === 'Current password is incorrect' || err.message === 'Current password is required'
                 ? err.message
                 : 'Account deletion failed. No changes were made to your account.'
@@ -496,8 +552,9 @@ app.get('/profile', ensureLogin, async (req, res) => {
     }
 });
 
-app.post('/profile', ensureLogin, upload.single('avatar'), async (req, res) => {
+app.post('/profile', ensureLogin, parseImageUpload('avatar'), verifyCsrfToken, async (req, res) => {
     try {
+        if (req.uploadError) throw new Error(req.uploadError);
         const username = typeof req.body.username === 'string' ? req.body.username.trim().toLowerCase() : '';
         const bio = typeof req.body.bio === 'string' ? req.body.bio.trim() : '';
         if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
@@ -625,30 +682,56 @@ app.get('/posts/add', ensureLogin, async (req, res) => {
     }
 });
 
-app.post('/posts/add', ensureLogin, upload.single('featureImage'), async (req, res) => {
+app.post('/posts/add', ensureLogin, parseImageUpload('featureImage'), verifyCsrfToken, async (req, res) => {
+    let uploadedFileId = null;
     try {
-        if (typeof req.body.title !== 'string' || req.body.title.trim().length > 160) throw new Error('Title must be 160 characters or fewer');
+        if (req.uploadError) throw new Error(req.uploadError);
+        if (typeof req.body.title !== 'string' || !req.body.title.trim() || req.body.title.trim().length > 160) {
+            throw new Error('Title must be between 1 and 160 characters');
+        }
         if (typeof req.body.body !== 'string' || req.body.body.length > 200000) throw new Error('Post content is too large');
         let imageUrl = '';
         if (req.file) {
             const result = await streamUpload(req);
             imageUrl = result.url;
+            uploadedFileId = result.fileId;
         }
-        req.body.featureImage = imageUrl;
-        await blogService.addPost(req.body, req.session.user.id);
+        const intent = req.body.intent === 'publish' ? 'publish' : 'draft';
+        const postData = { ...req.body, title: req.body.title.trim(), featureImage: imageUrl, published: intent === 'publish' };
+        await blogService.addPost(postData, req.session.user.id);
         res.redirect('/posts');
     } catch (err) {
-        res.status(500).send(err.message);
+        if (uploadedFileId) imagekit.deleteFile(uploadedFileId).catch(() => {});
+        const categories = await blogService.getCategories().catch(() => []);
+        const safeMessages = [
+            'Title must be between 1 and 160 characters',
+            'Post content is too large',
+            'Image must be 8 MB or smaller.',
+            'Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'
+        ];
+        res.status(400).render('addPost', {
+            categories,
+            errorMessage: safeMessages.includes(err.message) ? err.message : 'Post could not be saved. Try again.',
+            formData: { title: req.body?.title || '', body: req.body?.body || '', category: req.body?.category || '' }
+        });
     }
 });
 
-app.post('/posts/upload-image', ensureLogin, upload.single('image'), async (req, res) => {
+app.post('/posts/upload-image', ensureLogin, parseImageUpload('image'), verifyCsrfToken, async (req, res) => {
     try {
+        if (req.uploadError) throw new Error(req.uploadError);
         if (!req.file) return res.status(400).json({ error: 'No file provided' });
         const result = await streamUpload(req, 'posts');
-        res.json({ url: result.url });
+        res.json({ url: transformedImageUrl(result.url, 'post') });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        const safeMessages = [
+            'No file provided',
+            'Image must be 8 MB or smaller.',
+            'Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'
+        ];
+        res.status(400).json({
+            error: safeMessages.includes(err.message) ? err.message : 'Image could not be uploaded. Try again.'
+        });
     }
 });
 
@@ -720,38 +803,67 @@ app.get('/chat', ensureLogin, async (req, res) => {
         const members  = await blogService.getAllMemberUsernames();
         res.render('chat', {
             messages,
-            membersJson:     JSON.stringify(members),
-            currentUserId:   req.session.user.id,
-            currentUsername: req.session.user.username,
-            isAdmin:         !!req.session.user.isAdmin
+            chatConfigJson: safeJson({
+                members,
+                currentUserId: req.session.user.id,
+                currentUsername: req.session.user.username,
+                isAdmin: !!req.session.user.isAdmin,
+                imagekitEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || ''
+            })
             // supabaseUrl + supabaseAnonKey intentionally omitted —
             // realtime is proxied through /chat/ws so keys stay server-side
         });
     } catch (err) {
         res.render('chat', {
-            messages: [], membersJson: '[]',
-            supabaseUrl: '', supabaseAnonKey: '',
-            currentUserId: '', currentUsername: '', isAdmin: false
+            messages: [],
+            chatConfigJson: safeJson({ members: [], currentUserId: '', currentUsername: '', isAdmin: false, imagekitEndpoint: '' })
         });
     }
 });
 
-app.post('/chat/send', ensureLogin, async (req, res) => {
+app.post('/chat/send', ensureLogin, parseImageUpload('image'), verifyCsrfToken, async (req, res) => {
+    let uploadedFileId = null;
     try {
-        const result = await blogService.insertMessage(req.session.user.id, req.body.body);
+        if (req.uploadError) throw new Error(req.uploadError);
+        let media = null;
+        if (req.file) {
+            const uploaded = await streamUpload(req, 'chat');
+            uploadedFileId = uploaded.fileId;
+            media = {
+                imageUrl: uploaded.url,
+                imageFileId: uploaded.fileId
+            };
+        }
+        const result = await blogService.insertMessage(req.session.user.id, req.body.body, media);
         res.json({ ok: true, id: result.id, created_at: result.created_at });
     } catch (err) {
-        res.status(400).json({ error: err.message });
+        if (uploadedFileId) {
+            imagekit.deleteFile(uploadedFileId).catch(() => {});
+        }
+        const safeMessages = [
+            'Add a message or an image',
+            'message too long',
+            'Image must be 8 MB or smaller.',
+            'Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'
+        ];
+        res.status(400).json({
+            error: safeMessages.includes(err.message) ? err.message : 'Message could not be sent. Try again.'
+        });
     }
 });
 
 app.delete('/chat/:id', ensureLogin, async (req, res) => {
     try {
-        await blogService.deleteMessage(
+        const deleted = await blogService.deleteMessage(
             parseInt(req.params.id),
             req.session.user.id,
             req.session.user.isAdmin
         );
+        if (deleted?.image_file_id) {
+            imagekit.deleteFile(deleted.image_file_id).catch((error) => {
+                console.error('Unable to remove orphaned chat image:', error.message);
+            });
+        }
         res.json({ ok: true });
     } catch (err) {
         res.status(403).json({ error: err.message });
@@ -814,6 +926,9 @@ function startRealtimeRelay() {
                     id:         row.id,
                     author_id:  row.author_id,
                     body:       row.body,
+                    image_url:  row.image_url || null,
+                    image_full_url: row.image_url ? transformedImageUrl(row.image_url, 'post') : null,
+                    image_thumb_url: row.image_url ? transformedImageUrl(row.image_url, 'chat') : null,
                     created_at: row.created_at,
                     username:   profile?.username   || null,
                     avatar_url: profile?.avatar_url || null

@@ -31,8 +31,8 @@ module.exports.registerUser = async function (userData) {
     if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Enter a valid email address');
     if (password !== password2) throw new Error('Passwords do not match');
-    if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) {
-        throw new Error('Password must be at least 8 characters and include 1 capital letter, 1 number, and 1 symbol');
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) {
+        throw new Error('Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol');
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -122,8 +122,8 @@ module.exports.changeEmail = async function (email, password, newEmail) {
 };
 
 module.exports.changePassword = async function (email, password, newPassword) {
-    if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(newPassword || '')) {
-        throw new Error('Password must be at least 8 characters and include 1 capital letter, 1 number, and 1 symbol');
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(newPassword || '')) {
+        throw new Error('Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol');
     }
     const client = await authenticatedClient(email, password);
     const { error } = await client.auth.updateUser({ password: newPassword });

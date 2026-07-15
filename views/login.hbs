@@ -3,6 +3,7 @@
 
 <button class="boot-skip" id="bootSkip" type="button">Skip intro</button>
 
+<div class="login-stage">
 <!-- Boot sequence wrapper: dots → POST text → Tommy's neon sign -->
 <div class="boot-wrap">
     <!-- Stage 1: Loading dots -->
@@ -26,19 +27,7 @@
     </div>
 </div>
 
-<script>
-(function () {
-    var skip = document.getElementById('bootSkip');
-    if (!skip) return;
-    skip.addEventListener('click', function () {
-        document.body.classList.add('intro-skipped');
-        var email = document.querySelector('.boot-login input[type="email"]');
-        if (email) email.focus();
-    });
-})();
-</script>
-
-<!-- Stage 4: Login form fades in from bottom -->
+<!-- Stage 4: Login form appears directly below the sign -->
 <div class="boot-login">
     {{#if errorMessage}}
     <p class="gate-error">{{errorMessage}}</p>
@@ -63,3 +52,16 @@
         <p class="gate-switch mt-2">No alias? <a href="/register">Request access</a></p>
     </form>
 </div>
+</div>
+
+<script>
+(function () {
+    var skip = document.getElementById('bootSkip');
+    if (!skip) return;
+    skip.addEventListener('click', function () {
+        document.body.classList.add('intro-skipped');
+        var email = document.querySelector('.boot-login input[type="email"]');
+        if (email) email.focus();
+    });
+})();
+</script>
