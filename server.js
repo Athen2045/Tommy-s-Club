@@ -240,7 +240,7 @@ function isOpenPath(pathname) {
     return pathname === '/' || pathname === '/login' || pathname === '/register' ||
         pathname === '/pending' || pathname === '/rejected' || pathname === '/terms' ||
         pathname === '/about' || pathname === '/auth/refresh-status' ||
-        pathname === '/blog' || pathname.startsWith('/login/');
+        pathname === '/blog' || pathname.startsWith('/blog/');
 }
 
 app.use(async (req, res, next) => {
