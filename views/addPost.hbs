@@ -5,6 +5,7 @@
 
 <form method="POST" action="/posts/add" enctype="multipart/form-data" id="postForm"
     style="max-width:760px;display:flex;flex-direction:column;gap:18px">
+    <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
     <!-- Title -->
     <input type="text" class="post-title-input" id="title" name="title"
@@ -86,7 +87,7 @@
                             if (!file) return;
                             var fd = new FormData();
                             fd.append('image', file);
-                            fetch('/posts/upload-image', { method: 'POST', body: fd })
+                            fetch('/posts/upload-image', { method: 'POST', headers: { 'X-CSRF-Token': window.CSRF_TOKEN }, body: fd })
                                 .then(function (r) { return r.json(); })
                                 .then(function (json) {
                                     if (json.url) {

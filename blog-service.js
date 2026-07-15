@@ -174,11 +174,14 @@ module.exports.getCommentsByPost = async (postId) => {
 };
 
 module.exports.addComment = async ({ post_id, author_id, parent_id, body }) => {
+    if (!Number.isInteger(post_id) || post_id < 1) throw new Error('invalid post');
+    if (parent_id !== null && (!Number.isInteger(parent_id) || parent_id < 1)) throw new Error('invalid parent comment');
+    if (typeof body !== 'string' || !body.trim() || body.length > 2000) throw new Error('comment must be 1–2000 characters');
     const { error } = await supabase.from('comments').insert({
         post_id,
         author_id,
         parent_id: parent_id || null,
-        body
+        body: body.trim()
     });
     if (error) throw new Error('unable to post comment');
 };

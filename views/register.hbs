@@ -16,12 +16,13 @@
     {{#if successMessage}}
     <div class="gate-form-box" style="text-align:center">
         <p class="gate-success">{{successMessage}}</p>
-        <a href="/login" class="gate-btn mt-3">&#x25B8; ENTER CLUB9</a>
+        <a href="/login" class="gate-btn mt-3">&#x25B8; ENTER TOMMY'S CLUB</a>
     </div>
     {{else}}
 
     <div class="gate-form-box">
         <form method="POST" action="/register" class="gate-form" id="registerForm">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
             <!-- Anonymous identity picker -->
             <div class="gate-field">
@@ -64,7 +65,7 @@
                     placeholder="••••••••" required>
             </div>
 
-            <button type="submit" class="gate-btn">&#x25B8; JOIN CLUB9</button>
+            <button type="submit" class="gate-btn">&#x25B8; JOIN TOMMY'S CLUB</button>
         </form>
 
         <p class="gate-switch mt-2">Already a member? <a href="/login">Enter</a></p>

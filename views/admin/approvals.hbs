@@ -44,9 +44,11 @@
                 <td class="cell-mono">{{timeAgo created_at}}</td>
                 <td style="text-align:right;white-space:nowrap">
                     <form method="POST" action="/admin/approvals/{{id}}/approve" style="display:inline">
+                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <button type="submit" class="btn-approve">Approve</button>
                     </form>
                     <form method="POST" action="/admin/approvals/{{id}}/reject" style="display:inline;margin-left:6px">
+                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <button type="submit" class="btn-reject"
                             onclick="return confirm('Reject this member?')">Reject</button>
                     </form>

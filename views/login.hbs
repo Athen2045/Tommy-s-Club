@@ -29,8 +29,12 @@
     {{#if errorMessage}}
     <p class="gate-error">{{errorMessage}}</p>
     {{/if}}
+    {{#if successMessage}}
+    <p class="gate-success">{{successMessage}}</p>
+    {{/if}}
 
-    <form method="POST" action="/login" class="gate-form">
+        <form method="POST" action="/login" class="gate-form">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
         <div class="gate-field">
             <label class="gate-label">Email</label>
             <input type="email" name="email" class="gate-input" value="{{email}}"

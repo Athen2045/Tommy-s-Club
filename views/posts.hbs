@@ -71,6 +71,7 @@
                     <form method="POST" action="/posts/delete/{{id}}"
                         style="display:inline;margin-left:6px"
                         onsubmit="return confirm('Delete «{{title}}»?')">
+                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <button type="submit" class="btn-delete" title="Delete">Del</button>
                     </form>
                 </td>

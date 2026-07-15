@@ -55,6 +55,7 @@
             {{/if}}
         </div>
         <form method="POST" action="/blog/{{post.id}}/comments" style="flex:1">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
             <textarea name="body" class="comment-textarea" rows="3"
                 placeholder="Share your thoughts…" required></textarea>
             <div style="display:flex;justify-content:flex-end;margin-top:6px">
@@ -94,6 +95,7 @@
                     <form method="POST" action="/comments/delete/{{id}}"
                         style="display:inline"
                         onsubmit="return confirm('Delete this comment?')">
+                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <input type="hidden" name="postId" value="{{../post.id}}">
                         <button type="submit" class="comment-delete-link"
                             style="background:none;border:none;padding:0;cursor:pointer">Delete</button>
@@ -105,6 +107,7 @@
                 {{#if ../session.user}}
                 <div class="reply-form" id="reply-form-{{id}}" style="display:none">
                     <form method="POST" action="/blog/{{../post.id}}/comments">
+                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <input type="hidden" name="parent_id" value="{{id}}">
                         <textarea name="body" class="comment-textarea" rows="2"
                             placeholder="Write a reply…" required></textarea>
@@ -138,6 +141,7 @@
                             <form method="POST" action="/comments/delete/{{id}}"
                                 style="display:inline"
                                 onsubmit="return confirm('Delete this reply?')">
+                                <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                                 <input type="hidden" name="postId" value="{{../../post.id}}">
                                 <button type="submit" class="comment-delete-link"
                                     style="background:none;border:none;padding:0;cursor:pointer">Delete</button>
@@ -212,7 +216,7 @@ document.querySelectorAll('.cancel-reply').forEach(function (btn) {
     function react(key) {
         fetch('/blog/' + postId + '/react', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body: JSON.stringify({ emoji: key })
         })
         .then(function (r) { return r.json(); })

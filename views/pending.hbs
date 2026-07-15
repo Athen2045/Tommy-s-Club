@@ -22,6 +22,6 @@
 
     <p class="status-foot">
         Logged in as <span style="color:var(--neon-cyan)">{{session.user.username}}</span>
-        &middot; <a href="/logout">sign out</a>
+        &middot; <form method="POST" action="/logout" style="display:inline"><input type="hidden" name="_csrf" value="{{csrfToken}}"><button type="submit" style="background:none;border:0;padding:0;color:var(--neon-cyan);cursor:pointer;font:inherit">sign out</button></form>
     </p>
 </div>

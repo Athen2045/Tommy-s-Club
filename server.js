@@ -18,6 +18,13 @@ const authService = require('./auth-service');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const isProd = process.env.NODE_ENV === 'production';
+
+if (isProd && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) {
+    throw new Error('SESSION_SECRET must be at least 32 characters in production');
+}
+
+if (isProd) app.set('trust proxy', 1);
 
 // ── ImageKit ──────────────────────────────────────────────
 const imagekit = new ImageKit({
@@ -139,10 +146,9 @@ const registerLimiter = rateLimit({
 
 // ── Middleware ────────────────────────────────────────────
 app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(express.json({ limit: '100kb' }));
 
-const isProd = process.env.NODE_ENV === 'production';
 app.use(session({
     secret: process.env.SESSION_SECRET || (isProd
         ? (() => { throw new Error('SESSION_SECRET env var must be set in production'); })()
@@ -156,6 +162,21 @@ app.use(session({
         sameSite: 'lax'          // CSRF mitigation for same-site form posts
     }
 }));
+
+// Browser state-changing requests must carry a token issued to this session.
+// This protects form and fetch endpoints against cross-site request forgery.
+app.use((req, res, next) => {
+    if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+    res.locals.csrfToken = req.session.csrfToken;
+
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+    const supplied = req.get('x-csrf-token') || req.body?._csrf;
+    if (!supplied || supplied.length !== req.session.csrfToken.length ||
+        !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(req.session.csrfToken))) {
+        return res.status(403).send('Invalid request token');
+    }
+    next();
+});
 
 // Make session available to all templates
 app.use((req, res, next) => {
@@ -173,14 +194,19 @@ app.use((req, res, next) => {
 });
 
 // Global auth guard — 5-step check in order
-const OPEN_PATHS = ['/login', '/register', '/pending', '/rejected', '/terms', '/auth/refresh-status'];
+function isOpenPath(pathname) {
+    return pathname === '/' || pathname === '/login' || pathname === '/register' ||
+        pathname === '/pending' || pathname === '/rejected' || pathname === '/terms' ||
+        pathname === '/about' || pathname === '/auth/refresh-status' ||
+        pathname === '/blog' || pathname.startsWith('/blog/');
+}
 
 app.use((req, res, next) => {
     const u = req.session.user;
 
     // 1. Not logged in
     if (!u) {
-        if (OPEN_PATHS.includes(req.path)) return next();
+        if (isOpenPath(req.path)) return next();
         return res.redirect('/login');
     }
 
@@ -213,9 +239,11 @@ function ensureLogin(req, res, next) {
 
 // ── ImageKit upload helper ────────────────────────────────
 function streamUpload(req, folder = 'blog') {
+    const originalName = path.basename(req.file.originalname || `upload-${Date.now()}`);
+    const fileName = originalName.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120) || `upload-${Date.now()}`;
     return imagekit.upload({
         file:     req.file.buffer,
-        fileName: req.file.originalname || `upload-${Date.now()}`,
+        fileName,
         folder:   `/${folder}`
     });
 }
@@ -250,6 +278,9 @@ app.get('/blog', async (req, res) => {
 app.get('/blog/:id', async (req, res) => {
     try {
         const post        = await blogService.getPostById(req.params.id);
+        const user        = req.session.user;
+        const canViewDraft = user && (user.isAdmin || user.id === post.author_id);
+        if (!post.published && !canViewDraft) return res.status(404).render('404');
         const allComments = await blogService.getCommentsByPost(req.params.id);
         const categories  = await blogService.getCategories();
         const { counts: reactionCounts, userReactions } =
@@ -278,15 +309,22 @@ app.get('/blog/:id', async (req, res) => {
 // ── Routes: comments ──────────────────────────────────────
 
 app.post('/blog/:id/comments', ensureLogin, async (req, res) => {
+    const postId = Number.parseInt(req.params.id, 10);
+    const parentId = req.body.parent_id ? Number.parseInt(req.body.parent_id, 10) : null;
+    const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
+    if (!Number.isInteger(postId) || postId < 1 || (parentId !== null && (!Number.isInteger(parentId) || parentId < 1)) ||
+        !body || body.length > 2000) {
+        return res.redirect(`/blog/${encodeURIComponent(req.params.id)}#comments`);
+    }
     try {
         await blogService.addComment({
-            post_id: parseInt(req.params.id),
+            post_id: postId,
             author_id: req.session.user.id,
-            parent_id: req.body.parent_id ? parseInt(req.body.parent_id) : null,
-            body: req.body.body
+            parent_id: parentId,
+            body
         });
-    } catch (err) { /* continue */ }
-    res.redirect(`/blog/${req.params.id}#comments`);
+    } catch (err) { /* redirect without leaking database details */ }
+    res.redirect(`/blog/${encodeURIComponent(req.params.id)}#comments`);
 });
 
 app.post('/comments/delete/:id', ensureLogin, async (req, res) => {
@@ -297,16 +335,18 @@ app.post('/comments/delete/:id', ensureLogin, async (req, res) => {
             req.session.user.id,
             req.session.user.isAdmin
         );
-    } catch (e) { /* silently skip — redirect either way */ }
-    res.redirect(`/blog/${postId}#comments`);
+    } catch (e) { /* redirect without leaking database details */ }
+    res.redirect(`/blog/${encodeURIComponent(String(postId || ''))}#comments`);
 });
 
 // ── Routes: reactions ─────────────────────────────────────
 
 app.post('/blog/:id/react', ensureLogin, async (req, res) => {
+    const postId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(postId) || postId < 1) return res.status(400).json({ error: 'Invalid post id' });
     try {
         const result = await blogService.toggleReaction(
-            parseInt(req.params.id),
+            postId,
             req.session.user.id,
             req.body.emoji
         );
@@ -322,15 +362,22 @@ const GATE = { layout: 'gate' };
 
 app.get('/login', (req, res) => {
     if (req.session.user) return res.redirect('/blog');
-    res.render('login', GATE);
+    res.render('login', {
+        ...GATE,
+        successMessage: req.query.deleted === '1' ? 'Your account and member data have been deleted.' : null
+    });
 });
 
 app.post('/login', loginLimiter, async (req, res) => {
     try {
         const user = await authService.loginUser(req.body.email, req.body.password);
-        user.isAdmin = (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL);
-        req.session.user = user;
-        res.redirect('/blog');
+        user.isAdmin = !!(process.env.ADMIN_EMAIL && user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase());
+        req.session.regenerate(err => {
+            if (err) return res.status(500).render('login', { ...GATE, errorMessage: 'Unable to start a secure session' });
+            req.session.user = user;
+            req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+            res.redirect('/blog');
+        });
     } catch (err) {
         res.render('login', { ...GATE, errorMessage: err.message, email: req.body.email });
     }
@@ -350,8 +397,24 @@ app.post('/register', registerLimiter, async (req, res) => {
     }
 });
 
-app.get('/logout', (req, res) => {
+app.post('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/login'));
+});
+
+app.post('/account/delete', ensureLogin, async (req, res) => {
+    try {
+        await authService.verifyPassword(req.session.user.email, req.body.current_password);
+        await authService.deleteUserAccount(req.session.user.id);
+        req.session.destroy(() => res.redirect('/login?deleted=1'));
+    } catch (err) {
+        const profile = await blogService.getProfile(req.session.user.id).catch(() => req.session.user);
+        res.status(400).render('profile', {
+            profile,
+            errorMessage: err.message === 'Current password is incorrect' || err.message === 'Current password is required'
+                ? err.message
+                : 'Account deletion failed. No changes were made to your account.'
+        });
+    }
 });
 
 // ── Routes: access gate screens ───────────────────────────
@@ -410,7 +473,11 @@ app.get('/profile', ensureLogin, async (req, res) => {
 
 app.post('/profile', ensureLogin, upload.single('avatar'), async (req, res) => {
     try {
-        const updates = { bio: req.body.bio, username: req.body.username };
+        const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+        const bio = typeof req.body.bio === 'string' ? req.body.bio.trim() : '';
+        if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
+        if (bio.length > 500) throw new Error('Bio must be 500 characters or fewer');
+        const updates = { bio, username };
         if (req.file) {
             const result = await streamUpload(req, 'avatars');
             updates.avatar_url = result.url;
@@ -485,6 +552,8 @@ app.get('/posts/add', ensureLogin, async (req, res) => {
 
 app.post('/posts/add', ensureLogin, upload.single('featureImage'), async (req, res) => {
     try {
+        if (typeof req.body.title !== 'string' || req.body.title.trim().length > 160) throw new Error('Title must be 160 characters or fewer');
+        if (typeof req.body.body !== 'string' || req.body.body.length > 200000) throw new Error('Post content is too large');
         let imageUrl = '';
         if (req.file) {
             const result = await streamUpload(req);
@@ -538,7 +607,9 @@ app.get('/categories/add', ensureAdmin, (req, res) => res.render('addCategory'))
 
 app.post('/categories/add', ensureAdmin, async (req, res) => {
     try {
-        await blogService.addCategory(req.body);
+        const name = typeof (req.body.category || req.body.name) === 'string' ? (req.body.category || req.body.name).trim() : '';
+        if (!/^[^<>]{2,50}$/.test(name)) throw new Error('Channel name must be 2–50 characters');
+        await blogService.addCategory({ name });
         res.redirect('/categories');
     } catch (err) {
         res.status(500).send(err.message);

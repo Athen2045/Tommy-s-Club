@@ -16,9 +16,13 @@ const supabaseAdmin = createClient(
 module.exports.initialize = () => Promise.resolve();
 
 module.exports.registerUser = async function (userData) {
-    const { username, email, password, password2, avatar_url } = userData;
+    const username = typeof userData.username === 'string' ? userData.username.trim() : '';
+    const email = typeof userData.email === 'string' ? userData.email.trim().toLowerCase() : '';
+    const { password, password2, avatar_url } = userData;
 
     if (!username || !email || !password) throw new Error('All fields are required');
+    if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Enter a valid email address');
     if (password !== password2) throw new Error('Passwords do not match');
     if (password.length < 6) throw new Error('Password must be at least 6 characters');
 
@@ -46,6 +50,7 @@ module.exports.registerUser = async function (userData) {
 };
 
 module.exports.loginUser = async function (email, password) {
+    email = typeof email === 'string' ? email.trim().toLowerCase() : '';
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) throw new Error('Invalid email or password');
@@ -65,4 +70,20 @@ module.exports.loginUser = async function (email, password) {
         status:         profile?.status         || 'pending',
         terms_accepted: profile?.terms_accepted || false
     };
+};
+
+module.exports.verifyPassword = async function (email, password) {
+    email = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!email || typeof password !== 'string' || !password) {
+        throw new Error('Current password is required');
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error('Current password is incorrect');
+};
+
+module.exports.deleteUserAccount = async function (userId) {
+    if (!userId) throw new Error('Missing user id');
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (error) throw new Error('Unable to delete account');
 };

@@ -30,7 +30,7 @@
         <!-- Titlebar -->
         <div class="mac-titlebar">
             <div class="mac-close-box">&#x25A0;</div>
-            <span class="mac-title-text">The Room &mdash; Club9</span>
+            <span class="mac-title-text">The Room &mdash; Tommy's Club</span>
         </div>
 
         <!-- Chat split layout -->
@@ -254,7 +254,7 @@
     });
 
     var lastMsgEl = container.querySelector('.chat-msg:last-child');
-    if (lastMsgEl) localStorage.setItem('club9_last_msg', lastMsgEl.dataset.id);
+    if (lastMsgEl) localStorage.setItem('tommys_club_last_msg', lastMsgEl.dataset.id);
 
     scrollToBottom();
 
@@ -271,7 +271,7 @@
                         var msg = JSON.parse(e.data);
                         if (msg.type === 'message') {
                             container.appendChild(buildMsgEl(msg));
-                            localStorage.setItem('club9_last_msg', String(msg.id));
+                            localStorage.setItem('tommys_club_last_msg', String(msg.id));
                             scrollToBottom();
                         }
                     } catch (_) {}
@@ -298,7 +298,7 @@
         closeMentionDropdown();
         fetch('/chat/send', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body:    JSON.stringify({ body: body })
         }).catch(function (e) { console.error(e); });
     }
@@ -323,7 +323,7 @@
         if (!btn) return;
         if (!confirm('Delete this message?')) return;
         var msgId = btn.dataset.msgid;
-        fetch('/chat/' + msgId, { method: 'DELETE' })
+        fetch('/chat/' + msgId, { method: 'DELETE', headers: { 'X-CSRF-Token': window.CSRF_TOKEN } })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (data.ok) {

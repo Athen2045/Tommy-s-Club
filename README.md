@@ -37,7 +37,7 @@ A private, invite-only community platform. Members write posts, react, comment, 
 
 ```bash
 git clone <repository-url>
-cd tommys-club
+cd "Tommy's Club"
 npm install
 ```
 
@@ -78,7 +78,7 @@ App runs at `http://localhost:8080`
 ## Project Structure
 
 ```
-tommys-club/
+Tommy's Club/
 ├── server.js               # Express app, all routes, WebSocket server, security middleware
 ├── auth-service.js         # Supabase Auth — register, login
 ├── blog-service.js         # Supabase DB — posts, comments, reactions, chat, profiles
@@ -143,7 +143,7 @@ tommys-club/
 | POST | `/login` | Authenticate (rate-limited) |
 | GET | `/register` | Registration form |
 | POST | `/register` | Create account (rate-limited) |
-| GET | `/logout` | Destroy session |
+| POST | `/logout` | Destroy session |
 
 ### Authenticated
 | Method | Path | Description |
@@ -153,6 +153,7 @@ tommys-club/
 | POST | `/posts/add` | Submit a post |
 | POST | `/posts/delete/:id` | Delete own post |
 | GET | `/profile` | View / edit profile |
+| POST | `/account/delete` | Re-authenticate and permanently delete your account |
 | GET | `/member/:username` | Public member profile |
 | GET | `/chat` | Real-time chat |
 | POST | `/chat/send` | Send message |

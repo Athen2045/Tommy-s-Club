@@ -13,5 +13,5 @@
         Club membership is by discretion only.
     </div>
 
-    <a href="/logout" class="gate-btn">&#x25B8; SIGN OUT</a>
+    <form method="POST" action="/logout"><input type="hidden" name="_csrf" value="{{csrfToken}}"><button type="submit" class="gate-btn">&#x25B8; SIGN OUT</button></form>
 </div>

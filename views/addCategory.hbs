@@ -9,6 +9,7 @@
     {{/if}}
 
     <form method="POST" action="/categories/add" class="wf-stack" style="gap:16px">
+        <input type="hidden" name="_csrf" value="{{csrfToken}}">
         <div class="gate-field">
             <label class="gate-label">Channel name</label>
             <input class="gate-input" id="category" name="category" type="text"
