@@ -1,57 +1,25 @@
-<script>
-// Activate Mac System 1 mode
-(function () {
-    var screen = document.getElementById('crtScreen');
-    var main   = document.getElementById('crtMain');
-    if (screen) screen.classList.add('mac-screen');
-    if (main) {
-        main.style.padding         = '0';
-        main.style.overflow        = 'hidden';
-        main.style.display         = 'flex';
-        main.style.flexDirection   = 'column';
-    }
-})();
-</script>
-
-<div class="mac-chat-wrap">
-
-    <!-- Mac System 1 Menu bar -->
-    <div class="mac-menubar">
-        <span class="mac-menu-item mac-apple">&#x1F34E;</span>
-        <span class="mac-menu-item active">Tommy's Club</span>
-        <span class="mac-menu-item">Members</span>
-        <span class="mac-menu-item">View</span>
-        <span class="mac-menu-item" style="margin-left:auto">
-            <a href="/blog" style="color:inherit;font-size:11px">&#x2190; Vault</a>
-        </span>
-    </div>
-
-    <div class="mac-window-wrap">
-        <!-- Titlebar -->
-        <div class="mac-titlebar">
-            <div class="mac-close-box">&#x25A0;</div>
-            <span class="mac-title-text">The Room &mdash; Tommy's Club</span>
+<section class="chat-room" aria-labelledby="roomTitle">
+    <header class="chat-room-header">
+        <div>
+            <span class="chat-room-kicker">COMMUNITY WIRE / LIVE</span>
+            <h1 class="chat-room-title" id="roomTitle">The Room</h1>
         </div>
+        <span class="chat-room-status">Connected</span>
+    </header>
 
-        <!-- Chat split layout -->
-        <div class="mac-chat-split">
+    <div class="chat-layout">
+        <aside class="chat-members" aria-label="Club members">
+            <div class="chat-members-heading">MEMBERS</div>
+            <div id="membersList"></div>
+        </aside>
 
-            <!-- Members sidebar -->
-            <div class="mac-sidebar">
-                <div class="mac-sidebar-header"></div>
-                <div id="membersList" style="overflow-y:auto;flex:1"></div>
-            </div>
-
-            <!-- Main chat area -->
-            <div class="mac-chat-main">
-
-                <!-- Messages -->
-                <div class="mac-messages" id="chatMessages">
+        <div class="chat-panel">
+            <div class="chat-messages" id="chatMessages" aria-live="polite">
                     {{#each messages}}
                     <div class="chat-msg" data-id="{{id}}" data-author="{{author_id}}">
                         <div class="chat-msg-avatar">
                             {{#if profiles.avatar_url}}
-                            <img src="{{profiles.avatar_url}}" alt="" class="chat-avatar-img">
+                            <img src="{{profiles.avatar_url}}" alt="" class="chat-avatar-img" loading="lazy">
                             {{else}}
                             <span class="chat-avatar-initials">{{avatarInitial profiles.username}}</span>
                             {{/if}}
@@ -68,23 +36,20 @@
                         </button>
                     </div>
                     {{/each}}
-                </div>
+            </div>
 
-                <!-- Mention dropdown -->
-                <div class="mention-dropdown" id="mentionDropdown"></div>
+            <div class="mention-dropdown" id="mentionDropdown" role="listbox"></div>
 
-                <!-- Input row -->
-                <div class="mac-chat-input-row">
-                    <textarea id="chatInput" class="chat-input"
-                        placeholder="Message the room&#x2026; @ to mention"
-                        rows="1" maxlength="2000"></textarea>
-                    <button class="mac-send-btn" id="chatSendBtn" type="button">SEND</button>
-                </div>
-
+            <div class="chat-composer">
+                <label class="visually-hidden" for="chatInput">Message the room</label>
+                <textarea id="chatInput" class="chat-input" placeholder="Message the room… Use @ to mention someone"
+                    rows="1" maxlength="2000"></textarea>
+                <button class="chat-send-btn" id="chatSendBtn" type="button">Send</button>
+                <span class="chat-feedback" id="chatFeedback" aria-live="polite"></span>
             </div>
         </div>
     </div>
-</div>
+</section>
 
 <!-- Render members in sidebar -->
 <script>
@@ -94,7 +59,7 @@
     if (list && members) {
         members.forEach(function (name) {
             var item = document.createElement('div');
-            item.className = 'mac-member-item';
+            item.className = 'chat-member-item';
             item.textContent = name;
             list.appendChild(item);
         });
@@ -114,6 +79,7 @@
     var inputEl   = document.getElementById('chatInput');
     var sendBtn   = document.getElementById('chatSendBtn');
     var dropdown  = document.getElementById('mentionDropdown');
+    var feedback  = document.getElementById('chatFeedback');
 
     var mentionStart = -1;
 
@@ -190,6 +156,7 @@
             img.src       = msg.avatar_url;
             img.alt       = '';
             img.className = 'chat-avatar-img';
+            img.loading   = 'lazy';
             avatarDiv.appendChild(img);
         } else {
             var initSpan = document.createElement('span');
@@ -292,15 +259,29 @@
     // ── Send message ──────────────────────────────────────
     function sendMessage() {
         var body = inputEl.value.trim();
-        if (!body) return;
+        if (!body || sendBtn.disabled) return;
         inputEl.value = '';
         autoResize();
         closeMentionDropdown();
+        feedback.textContent = '';
+        sendBtn.disabled = true;
+        sendBtn.setAttribute('aria-busy', 'true');
+        sendBtn.textContent = 'Sending…';
         fetch('/chat/send', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body:    JSON.stringify({ body: body })
-        }).catch(function (e) { console.error(e); });
+        }).then(function (response) {
+            if (!response.ok) return response.json().then(function (data) { throw new Error(data.error || 'Message could not be sent'); });
+        }).catch(function (error) {
+            if (!inputEl.value) inputEl.value = body;
+            autoResize();
+            feedback.textContent = error.message || 'Message could not be sent. Try again.';
+        }).finally(function () {
+            sendBtn.disabled = false;
+            sendBtn.removeAttribute('aria-busy');
+            sendBtn.textContent = 'Send';
+        });
     }
 
     sendBtn.addEventListener('click', sendMessage);
@@ -369,13 +350,17 @@
         filtered.forEach(function (name, i) {
             var item = document.createElement('div');
             item.className   = 'mention-item' + (i === 0 ? ' active' : '');
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', String(i === 0));
             item.textContent = name;
             item.addEventListener('click', function () { insertMention(name); });
             item.addEventListener('mouseover', function () {
                 dropdown.querySelectorAll('.mention-item').forEach(function (el) {
                     el.classList.remove('active');
+                    el.setAttribute('aria-selected', 'false');
                 });
                 item.classList.add('active');
+                item.setAttribute('aria-selected', 'true');
             });
             dropdown.appendChild(item);
         });

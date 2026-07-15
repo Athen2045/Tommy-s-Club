@@ -3,147 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f4eedf">
     <title>{{#if title}}{{title}} — {{/if}}Tommy's Club</title>
     <meta name="csrf-token" content="{{csrfToken}}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Bodoni:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Press+Start+2P&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/crt.css">
+    <link rel="stylesheet" href="/css/editorial.css">
+    <script src="/js/forms.js" defer></script>
 </head>
-<body>
+<body class="editorial-body">
+<a class="skip-link" href="#main-content">Skip to content</a>
 
-<div class="crt">
-    <div class="crt-screen" id="crtScreen">
-        <div class="crt-content">
-            <div class="crt-sweep"></div>
+<div class="app-shell">
+    <aside class="app-rail" aria-label="Primary navigation">
+        <a class="app-brand" href="/blog" aria-label="Tommy's Club home">
+            <span class="app-brand-script">Tommy's</span>
+            <span class="app-brand-block">CLUB</span>
+        </a>
+        <div class="issue-stamp" aria-hidden="true">EST. 2026 / ISSUE 01</div>
 
-            <!-- ── Topbar ─────────────────────────────────────── -->
-            <header class="crt-topbar">
-                <button class="crt-hamburger" id="sidebarToggle" aria-label="Menu">&#x2630;</button>
+        <nav class="rail-nav">
+            <div class="rail-section">
+                <span class="rail-label">Read</span>
+                {{#navLink "/blog"}}<i class="bi bi-house" aria-hidden="true"></i><span>Home</span>{{/navLink}}
+                <a class="nav-link" href="/about"><i class="bi bi-info-square" aria-hidden="true"></i><span>About</span></a>
+                {{#if session.user}}
+                {{#navLink "/categories"}}<i class="bi bi-grid" aria-hidden="true"></i><span>Channels</span>{{/navLink}}
+                {{/if}}
+            </div>
 
-                <a class="crt-brand" href="/blog">Tommy's <span>CLUB</span></a>
+            {{#if session.user}}
+            <div class="rail-section">
+                <span class="rail-label">Participate</span>
+                {{#navLink "/chat"}}<i class="bi bi-chat-square-text" aria-hidden="true"></i><span>The Room</span><span class="unread-mark" data-unread-mark hidden>New</span>{{/navLink}}
+                {{#navLink "/posts/add"}}<i class="bi bi-pencil-square" aria-hidden="true"></i><span>Write</span>{{/navLink}}
+                {{#navLink "/posts"}}<i class="bi bi-collection" aria-hidden="true"></i><span>Dashboard</span>{{/navLink}}
+            </div>
+            <div class="rail-section">
+                <span class="rail-label">Account</span>
+                {{#navLink "/settings"}}<i class="bi bi-sliders2" aria-hidden="true"></i><span>Settings</span>{{/navLink}}
+                {{#if session.user.isAdmin}}
+                {{#navLink "/admin/approvals"}}<i class="bi bi-person-check" aria-hidden="true"></i><span>Approvals</span>{{/navLink}}
+                {{/if}}
+            </div>
+            {{else}}
+            <div class="rail-section rail-section--guest">
+                <span class="rail-label">Membership</span>
+                <a class="nav-link" href="/login"><i class="bi bi-door-open" aria-hidden="true"></i><span>Log in</span></a>
+                <a class="nav-link nav-link--accent" href="/register"><i class="bi bi-person-plus" aria-hidden="true"></i><span>Create account</span></a>
+            </div>
+            {{/if}}
+        </nav>
 
-                <nav class="crt-topbar-nav">
-                    {{#navLink "/blog"}}Home{{/navLink}}
-                    {{#navLink "/about"}}About{{/navLink}}
-                </nav>
-
-                <div class="crt-topbar-end">
-                    <a href="/posts/add" class="wf-btn sm cyan" style="display:flex;align-items:center;gap:5px;font-size:13px;padding:4px 12px;letter-spacing:1px;">
-                        <i class="bi bi-pencil-square"></i> Write
-                    </a>
-
-                    <!-- Bootstrap dropdown for user menu -->
-                    <div class="dropdown">
-                        <button class="crt-avatar-btn" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
-                            {{#if session.user.avatar_url}}
-                            <img src="{{session.user.avatar_url}}" alt="avatar">
-                            {{else}}
-                            <span class="crt-avatar-initials">{{avatarInitial session.user.username}}</span>
-                            {{/if}}
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end mt-2">
-                            <li>
-                                <span class="dropdown-item-text">
-                                    {{session.user.username}}
-                                    {{#if session.user.isAdmin}}<span class="admin-badge">ADMIN</span>{{/if}}
-                                </span>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/posts"><i class="bi bi-grid-3x3-gap"></i>Dashboard</a></li>
-                            {{#if session.user.isAdmin}}
-                            <li><a class="dropdown-item" href="/admin/approvals"><i class="bi bi-person-check"></i>Approvals</a></li>
-                            {{/if}}
-                            <li><a class="dropdown-item" href="/chat"><i class="bi bi-chat"></i>The Room</a></li>
-                            <li><a class="dropdown-item" href="/categories"><i class="bi bi-tags"></i>Channels</a></li>
-                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i>Profile</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><form method="POST" action="/logout" class="dropdown-item p-0">
-                                <input type="hidden" name="_csrf" value="{{csrfToken}}">
-                                <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i>Sign out</button>
-                            </form></li>
-                        </ul>
-                    </div>
-                </div>
-            </header>
-
-            <!-- ── Body (sidebar + content) ────────────────────── -->
-            <div class="crt-body-wrap">
-
-                <!-- Sidebar overlay -->
-                <div class="crt-overlay" id="crtOverlay"></div>
-
-                <!-- Sidebar -->
-                <aside class="crt-sidebar" id="crtSidebar">
-                    <div class="crt-sidebar-head">
-                        <a class="crt-sidebar-brand" href="/blog">Tommy's</a>
-                        <button class="crt-sidebar-close" id="sidebarClose" aria-label="Close">&#x00D7;</button>
-                    </div>
-
-                    <nav style="flex:1;overflow-y:auto;padding:8px 0;">
-                        <div class="crt-sidebar-section">
-                            <div class="crt-sidebar-section-label">Browse</div>
-                            {{#navLink "/blog"}}<i class="bi bi-journal-text"></i> All Posts{{/navLink}}
-                            {{#navLink "/categories"}}<i class="bi bi-tags"></i> Channels{{/navLink}}
-                        </div>
-                        <div class="crt-sidebar-section">
-                            <div class="crt-sidebar-section-label">Community</div>
-                            {{#navLink "/chat"}}<i class="bi bi-chat-fill"></i> The Room
-                                <span class="crt-unread-dot" id="sidebarUnreadDot"></span>
-                            {{/navLink}}
-                        </div>
-                        <div class="crt-sidebar-section">
-                            <div class="crt-sidebar-section-label">You</div>
-                            {{#navLink "/posts/add"}}<i class="bi bi-pencil-square"></i> Write{{/navLink}}
-                            {{#navLink "/profile"}}<i class="bi bi-person"></i> Profile{{/navLink}}
-                            {{#navLink "/posts"}}<i class="bi bi-grid-3x3-gap"></i> Dashboard{{/navLink}}
-                            {{#if session.user.isAdmin}}
-                            {{#navLink "/admin/approvals"}}<i class="bi bi-person-check"></i> Approvals{{/navLink}}
-                            {{/if}}
-                        </div>
-                    </nav>
-                </aside>
-
-                <!-- Main content -->
-                <main class="crt-main" id="crtMain">
-                    {{{body}}}
-                </main>
-
+        {{#if session.user}}
+        <div class="profile-menu rail-profile" data-profile-menu>
+            <button class="profile-menu-trigger" type="button" data-profile-trigger
+                aria-controls="railProfileMenu" aria-expanded="false">
+                <span class="profile-avatar-small">
+                    {{#if session.user.avatar_url}}
+                    <img src="{{session.user.avatar_url}}" alt="">
+                    {{else}}
+                    <span>{{avatarInitial session.user.username}}</span>
+                    {{/if}}
+                </span>
+                <span class="profile-trigger-copy">
+                    <span class="profile-trigger-name">{{session.user.username}}</span>
+                    <span class="profile-trigger-email">{{session.user.email}}</span>
+                </span>
+                <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </button>
+            <div class="profile-dropdown" id="railProfileMenu" data-profile-content hidden>
+                <span class="profile-menu-kicker">SIGNED IN</span>
+                <strong class="profile-menu-name">{{session.user.username}}</strong>
+                {{#if session.user.isAdmin}}<span class="admin-badge">ADMIN</span>{{/if}}
+                <a class="dropdown-item" href="/profile"><i class="bi bi-person" aria-hidden="true"></i><span>View profile</span></a>
+                <a class="dropdown-item" href="/settings"><i class="bi bi-sliders2" aria-hidden="true"></i><span>Settings</span></a>
+                <div class="dropdown-divider"></div>
+                <form method="POST" action="/logout" class="profile-menu-logout">
+                    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                    <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right" aria-hidden="true"></i><span>Log out</span></button>
+                </form>
             </div>
         </div>
-    </div>
-    <div class="crt-led"></div>
+        {{/if}}
+    </aside>
+
+    <header class="mobile-masthead">
+        <a class="mobile-brand" href="/blog">Tommy's <span>CLUB</span></a>
+        <span class="mobile-issue">ISSUE 01</span>
+    </header>
+
+    <main class="app-main" id="main-content" tabindex="-1">
+        <div class="page-registration" aria-hidden="true"><span></span><span></span><span></span></div>
+        {{{body}}}
+    </main>
+
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+        {{#if session.user}}
+        {{#navLink "/blog"}}<i class="bi bi-house" aria-hidden="true"></i><span>Home</span>{{/navLink}}
+        {{#navLink "/categories"}}<i class="bi bi-grid" aria-hidden="true"></i><span>Channels</span>{{/navLink}}
+        <a class="mobile-write" href="/posts/add"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Write</span></a>
+        {{#navLink "/chat"}}<i class="bi bi-chat-square-text" aria-hidden="true"></i><span>Chat</span><b class="mobile-unread" data-unread-mark hidden>New</b>{{/navLink}}
+        <button type="button" data-mobile-profile-trigger aria-controls="mobileProfileSheet" aria-expanded="false"><i class="bi bi-person" aria-hidden="true"></i><span>Profile</span></button>
+        {{else}}
+        {{#navLink "/blog"}}<i class="bi bi-house" aria-hidden="true"></i><span>Home</span>{{/navLink}}
+        {{#navLink "/about"}}<i class="bi bi-info-square" aria-hidden="true"></i><span>About</span>{{/navLink}}
+        <a href="/login"><i class="bi bi-door-open" aria-hidden="true"></i><span>Log in</span></a>
+        <a href="/register"><i class="bi bi-person-plus" aria-hidden="true"></i><span>Join</span></a>
+        {{/if}}
+    </nav>
+
+    {{#if session.user}}
+    <div class="mobile-profile-scrim" data-mobile-profile-scrim hidden></div>
+    <section class="mobile-profile-sheet" id="mobileProfileSheet" aria-label="Profile menu" aria-hidden="true" hidden>
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="sheet-profile">
+            <span class="profile-avatar-small">
+                {{#if session.user.avatar_url}}<img src="{{session.user.avatar_url}}" alt="">{{else}}<span>{{avatarInitial session.user.username}}</span>{{/if}}
+            </span>
+            <div><strong>{{session.user.username}}</strong><span>{{session.user.email}}</span></div>
+        </div>
+        <a href="/profile"><i class="bi bi-person" aria-hidden="true"></i>Profile</a>
+        <a href="/settings"><i class="bi bi-sliders2" aria-hidden="true"></i>Settings</a>
+        <a href="/posts"><i class="bi bi-collection" aria-hidden="true"></i>Dashboard</a>
+        <form method="POST" action="/logout">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <button type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Log out</button>
+        </form>
+    </section>
+    {{/if}}
 </div>
 
-<!-- Bootstrap JS for dropdown only -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-(function () { window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content; })();
 (function () {
-    var toggle   = document.getElementById('sidebarToggle');
-    var sidebar  = document.getElementById('crtSidebar');
-    var overlay  = document.getElementById('crtOverlay');
-    var closeBtn = document.getElementById('sidebarClose');
+    var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    window.CSRF_TOKEN = tokenMeta ? tokenMeta.content : '';
 
-    function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('open'); }
-    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+    document.querySelectorAll('[data-profile-menu]').forEach(function (menu) {
+        var trigger = menu.querySelector('[data-profile-trigger]');
+        var content = menu.querySelector('[data-profile-content]');
+        function setOpen(open, restoreFocus) {
+            menu.classList.toggle('is-open', open);
+            trigger.setAttribute('aria-expanded', String(open));
+            content.hidden = !open;
+            if (!open && restoreFocus) trigger.focus();
+        }
+        trigger.addEventListener('click', function (event) {
+            event.stopPropagation();
+            setOpen(!menu.classList.contains('is-open'), false);
+        });
+        document.addEventListener('click', function (event) {
+            if (!menu.contains(event.target) && menu.classList.contains('is-open')) setOpen(false, true);
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && menu.classList.contains('is-open')) setOpen(false, true);
+        });
+    });
 
-    if (toggle)   toggle.addEventListener('click', openSidebar);
-    if (overlay)  overlay.addEventListener('click', closeSidebar);
-    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
-
-    // Unread dot on sidebar chat link
-    var dot = document.getElementById('sidebarUnreadDot');
-    if (dot) {
-        var lastSeen = parseInt(localStorage.getItem('tommys_club_last_msg') || '0', 10);
-        fetch('/chat/unread-count')
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                if (d.latestId && d.latestId > lastSeen) dot.style.display = 'inline-block';
-            })
-            .catch(function () {});
+    var mobileTrigger = document.querySelector('[data-mobile-profile-trigger]');
+    var mobileSheet = document.getElementById('mobileProfileSheet');
+    var mobileScrim = document.querySelector('[data-mobile-profile-scrim]');
+    function setMobileProfile(open, restoreFocus) {
+        if (!mobileTrigger || !mobileSheet || !mobileScrim) return;
+        mobileTrigger.setAttribute('aria-expanded', String(open));
+        mobileSheet.setAttribute('aria-hidden', String(!open));
+        mobileSheet.hidden = !open;
+        mobileScrim.hidden = !open;
+        document.body.classList.toggle('profile-sheet-open', open);
+        if (open) {
+            var firstAction = mobileSheet.querySelector('a, button');
+            if (firstAction) window.setTimeout(function () { firstAction.focus(); }, 0);
+        }
+        if (!open && restoreFocus) mobileTrigger.focus();
     }
+    if (mobileTrigger) mobileTrigger.addEventListener('click', function () {
+        setMobileProfile(mobileTrigger.getAttribute('aria-expanded') !== 'true', false);
+    });
+    if (mobileScrim) mobileScrim.addEventListener('click', function () { setMobileProfile(false, true); });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && mobileTrigger && mobileTrigger.getAttribute('aria-expanded') === 'true') setMobileProfile(false, true);
+    });
+
+    {{#if session.user}}
+    var unreadMarks = document.querySelectorAll('[data-unread-mark]');
+    if (unreadMarks.length) {
+        var lastSeen = parseInt(localStorage.getItem('tommys_club_last_msg') || '0', 10);
+        fetch('/chat/unread-count').then(function (response) { return response.json(); }).then(function (data) {
+            if (data.latestId && data.latestId > lastSeen) unreadMarks.forEach(function (mark) { mark.hidden = false; });
+        }).catch(function () {});
+    }
+    {{/if}}
 })();
 </script>
 </body>

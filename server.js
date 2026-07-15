@@ -69,13 +69,14 @@ app.engine('.hbs', exphbs.engine({
                 ],
                 allowedAttributes: {
                     'a':   ['href', 'target', 'rel'],
-                    'img': ['src', 'alt', 'width', 'height'],
+                    'img': ['src', 'alt', 'width', 'height', 'loading', 'decoding'],
                     '*':   ['class']
                 },
                 allowedSchemes: ['http', 'https', 'mailto'],
                 // Force external links to be safe
                 transformTags: {
-                    'a': sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' })
+                    'a': sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }),
+                    'img': sanitizeHtml.simpleTransform('img', { loading: 'lazy', decoding: 'async' })
                 }
             });
         },
@@ -201,7 +202,7 @@ function isOpenPath(pathname) {
         pathname === '/blog' || pathname.startsWith('/blog/');
 }
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
     const u = req.session.user;
 
     // 1. Not logged in
@@ -210,25 +211,37 @@ app.use((req, res, next) => {
         return res.redirect('/login');
     }
 
-    // 2. Logged in but pending approval
-    if (u.status === 'pending') {
-        if (req.path === '/pending' || req.path === '/logout' || req.path === '/auth/refresh-status') return next();
-        return res.redirect('/pending');
+    // 2. Email verification is required before any authenticated access.
+    if (u.email_verified !== true) {
+        if (req.path === '/logout') return next();
+        return res.redirect('/login?unverified=1');
     }
 
-    // 3. Logged in but rejected
+    // 3. Keep pending users in sync so an admin rejection takes effect on the
+    // next request, while verified pending users can use the site.
+    if (u.status === 'pending') {
+        try {
+            const fresh = await blogService.getProfileStatus(u.id);
+            if (fresh) {
+                u.status = fresh.status;
+                u.terms_accepted = fresh.terms_accepted;
+            }
+        } catch (e) { /* keep the session state if Supabase is temporarily unavailable */ }
+    }
+
+    // 4. Logged in but rejected
     if (u.status === 'rejected') {
         if (req.path === '/rejected' || req.path === '/logout') return next();
         return res.redirect('/rejected');
     }
 
-    // 4. Approved but hasn't accepted terms yet
-    if (u.status === 'approved' && !u.terms_accepted) {
+    // 5. Verified members must accept the house rules before entering.
+    if (!u.terms_accepted) {
         if (req.path === '/terms' || req.path === '/logout') return next();
         return res.redirect('/terms');
     }
 
-    // 5. All good — approved and terms accepted
+    // 6. Email-verified members may enter before admin approval.
     next();
 });
 
@@ -364,7 +377,8 @@ app.get('/login', (req, res) => {
     if (req.session.user) return res.redirect('/blog');
     res.render('login', {
         ...GATE,
-        successMessage: req.query.deleted === '1' ? 'Your account and member data have been deleted.' : null
+        successMessage: req.query.deleted === '1' ? 'Your account and member data have been deleted.' : null,
+        errorMessage: req.query.unverified === '1' ? 'Please verify your email address before continuing.' : null
     });
 });
 
@@ -376,11 +390,23 @@ app.post('/login', loginLimiter, async (req, res) => {
             if (err) return res.status(500).render('login', { ...GATE, errorMessage: 'Unable to start a secure session' });
             req.session.user = user;
             req.session.csrfToken = crypto.randomBytes(32).toString('hex');
-            res.redirect('/blog');
+            req.session.entryTransitionSeen = false;
+            res.redirect('/enter');
         });
     } catch (err) {
         res.render('login', { ...GATE, errorMessage: err.message, email: req.body.email });
     }
+});
+
+// A short, one-time bridge between the CRT gate and the editorial club UI.
+// The session flag prevents refreshes or direct revisits from replaying it.
+app.get('/enter', ensureLogin, (req, res) => {
+    if (req.session.entryTransitionSeen) return res.redirect('/blog');
+    req.session.entryTransitionSeen = true;
+    req.session.save(err => {
+        if (err) return res.redirect('/blog');
+        res.render('enter', { layout: 'transition', title: 'Opening the Club' });
+    });
 });
 
 app.get('/register', (req, res) => {
@@ -391,7 +417,7 @@ app.get('/register', (req, res) => {
 app.post('/register', registerLimiter, async (req, res) => {
     try {
         await authService.registerUser(req.body);
-        res.render('register', { ...GATE, successMessage: 'Account created! You can now sign in.' });
+        res.render('register', { ...GATE, successMessage: 'Account created. Check your email and click the verification link before signing in.' });
     } catch (err) {
         res.render('register', { ...GATE, errorMessage: err.message, username: req.body.username, email: req.body.email });
     }
@@ -433,10 +459,9 @@ app.get('/auth/refresh-status', async (req, res) => {
     } catch (e) { /* keep existing session values on error */ }
 
     const u = req.session.user;
-    if (u.status === 'approved' && u.terms_accepted)  return res.redirect('/blog');
-    if (u.status === 'approved' && !u.terms_accepted) return res.redirect('/terms');
     if (u.status === 'rejected')                      return res.redirect('/rejected');
-    return res.redirect('/pending');
+    if (u.terms_accepted)                             return res.redirect('/enter');
+    return res.redirect('/terms');
 });
 
 // ── Routes: terms ─────────────────────────────────────────
@@ -454,7 +479,7 @@ app.post('/terms', ensureLogin, async (req, res) => {
     try {
         await blogService.acceptTerms(req.session.user.id);
         req.session.user.terms_accepted = true;
-        res.redirect('/blog');
+        res.redirect('/enter');
     } catch (err) {
         res.render('terms', { ...GATE, errorMessage: err.message });
     }
@@ -473,7 +498,7 @@ app.get('/profile', ensureLogin, async (req, res) => {
 
 app.post('/profile', ensureLogin, upload.single('avatar'), async (req, res) => {
     try {
-        const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+        const username = typeof req.body.username === 'string' ? req.body.username.trim().toLowerCase() : '';
         const bio = typeof req.body.bio === 'string' ? req.body.bio.trim() : '';
         if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
         if (bio.length > 500) throw new Error('Bio must be 500 characters or fewer');
@@ -481,12 +506,62 @@ app.post('/profile', ensureLogin, upload.single('avatar'), async (req, res) => {
         if (req.file) {
             const result = await streamUpload(req, 'avatars');
             updates.avatar_url = result.url;
+        } else if (authService.DEFAULT_AVATARS[req.body.avatar_choice]) {
+            updates.avatar_url = authService.DEFAULT_AVATARS[req.body.avatar_choice];
         }
         await blogService.updateProfile(req.session.user.id, updates);
         req.session.user = { ...req.session.user, ...updates };
         res.render('profile', { profile: { ...req.session.user, ...updates }, successMessage: 'Profile updated!' });
     } catch (err) {
         res.render('profile', { profile: req.session.user, errorMessage: err.message });
+    }
+});
+
+// ── Account settings ─────────────────────────────────────
+
+app.get('/settings', ensureLogin, (req, res) => {
+    res.render('settings');
+});
+
+app.post('/settings/username', ensureLogin, async (req, res) => {
+    try {
+        const username = typeof req.body.username === 'string' ? req.body.username.trim().toLowerCase() : '';
+        if (!/^[a-z0-9_]{3,32}$/.test(username)) {
+            throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
+        }
+        await authService.verifyPassword(req.session.user.email, req.body.current_password);
+        await blogService.updateProfile(req.session.user.id, { username });
+        req.session.user.username = username;
+        res.render('settings', { successMessage: 'Username updated.' });
+    } catch (err) {
+        res.status(400).render('settings', { errorMessage: err.message });
+    }
+});
+
+app.post('/settings/email', ensureLogin, async (req, res) => {
+    try {
+        await authService.changeEmail(
+            req.session.user.email,
+            req.body.current_password,
+            req.body.new_email
+        );
+        res.render('settings', { successMessage: 'Verification email sent. Confirm the new address before using it to sign in.' });
+    } catch (err) {
+        res.status(400).render('settings', { errorMessage: err.message });
+    }
+});
+
+app.post('/settings/password', ensureLogin, async (req, res) => {
+    try {
+        if (req.body.new_password !== req.body.new_password2) throw new Error('New passwords do not match');
+        await authService.changePassword(
+            req.session.user.email,
+            req.body.current_password,
+            req.body.new_password
+        );
+        res.render('settings', { successMessage: 'Password updated. Use the new password next time you sign in.' });
+    } catch (err) {
+        res.status(400).render('settings', { errorMessage: err.message });
     }
 });
 

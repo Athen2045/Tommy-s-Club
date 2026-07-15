@@ -1,0 +1,90 @@
+<div class="admin-header">
+    <div>
+        <h1 class="admin-title">Settings</h1>
+        <p class="admin-sub">Manage your account and sign-in details</p>
+    </div>
+</div>
+
+{{#if successMessage}}
+<div class="gate-success settings-notice">{{successMessage}}</div>
+{{/if}}
+{{#if errorMessage}}
+<div class="gate-error settings-notice">{{errorMessage}}</div>
+{{/if}}
+
+<div class="settings-grid">
+    <section class="settings-card">
+        <div class="settings-card-kicker">PUBLIC IDENTITY</div>
+        <h2>Change username</h2>
+        <p>Your username is unique across Tommy's Club.</p>
+        <form method="POST" action="/settings/username" class="settings-form">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <label class="gate-label" for="settings-username">Username</label>
+            <input class="gate-input" id="settings-username" name="username"
+                value="{{session.user.username}}" minlength="3" maxlength="32"
+                pattern="[a-zA-Z0-9_]{3,32}" required>
+            <label class="gate-label" for="username-current-password">Current password</label>
+            <input class="gate-input" id="username-current-password" name="current_password"
+                type="password" autocomplete="current-password" required>
+            <button class="gate-btn settings-btn" type="submit">&#x25B8; Save Username</button>
+        </form>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-card-kicker">CONTACT</div>
+        <h2>Change email address</h2>
+        <p>We will send a verification link to the new address.</p>
+        <form method="POST" action="/settings/email" class="settings-form">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <label class="gate-label" for="settings-email">New email address</label>
+            <input class="gate-input" id="settings-email" name="new_email"
+                type="email" autocomplete="email" required>
+            <label class="gate-label" for="email-current-password">Current password</label>
+            <input class="gate-input" id="email-current-password" name="current_password"
+                type="password" autocomplete="current-password" required>
+            <button class="gate-btn settings-btn" type="submit">&#x25B8; Send Verification</button>
+        </form>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-card-kicker">SECURITY</div>
+        <h2>Change password</h2>
+        <p>Use at least 8 characters, including 1 capital letter, 1 number, and 1 symbol.</p>
+        <form method="POST" action="/settings/password" class="settings-form">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <label class="gate-label" for="password-current">Current password</label>
+            <input class="gate-input" id="password-current" name="current_password"
+                type="password" autocomplete="current-password" required>
+            <label class="gate-label" for="settings-new-password">New password</label>
+            <input class="gate-input" id="settings-new-password" name="new_password"
+                type="password" minlength="8" autocomplete="new-password"
+                pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+                title="Use at least 8 characters, including 1 capital letter, 1 number, and 1 symbol" required>
+            <label class="gate-label" for="settings-confirm-password">Confirm new password</label>
+            <input class="gate-input" id="settings-confirm-password" name="new_password2"
+                type="password" minlength="8" autocomplete="new-password" required>
+            <button class="gate-btn settings-btn" type="submit">&#x25B8; Update Password</button>
+        </form>
+    </section>
+
+    <section class="settings-card settings-card--danger">
+        <div class="settings-card-kicker">IRREVERSIBLE</div>
+        <h2>Delete account</h2>
+        <p>Remove your account and member data permanently.</p>
+        <a class="settings-danger-link" href="/profile">Manage account deletion &#x2192;</a>
+    </section>
+</div>
+
+<script>
+(function () {
+    var form = document.querySelector('form[action="/settings/password"]');
+    if (!form) return;
+    var first = form.querySelector('[name="new_password"]');
+    var second = form.querySelector('[name="new_password2"]');
+    function confirmPassword() {
+        second.setCustomValidity(first.value === second.value ? '' : 'Passwords do not match');
+    }
+    first.addEventListener('input', confirmPassword);
+    second.addEventListener('input', confirmPassword);
+})();
+</script>

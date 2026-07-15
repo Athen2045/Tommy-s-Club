@@ -21,7 +21,7 @@ A private, invite-only community platform. Members write posts, react, comment, 
 
 ## Features
 
-- **Invite-only access** — new registrations sit in a pending queue until approved by an admin
+- **Verified-email access** — members enter after email verification; admins can approve or reject membership later
 - **Terms gate** — approved members must accept house rules before entering
 - **Blog** — rich-text posts (Quill editor) with categories, reactions, and threaded comments
 - **The Room** — real-time chat with @mention autocomplete (Mac System 1 aesthetic)
@@ -100,7 +100,8 @@ Tommy's Club/
 │   ├── addPost.hbs         # Write / edit a post
 │   ├── categories.hbs      # Channel list
 │   ├── about.hbs           # About page
-│   ├── pending.hbs         # Awaiting approval screen
+│   ├── pending.hbs         # Membership review status screen
+│   ├── settings.hbs        # Account settings
 │   ├── rejected.hbs        # Rejected screen
 │   ├── terms.hbs           # House rules acceptance
 │   ├── 404.hbs             # Not found
@@ -154,6 +155,10 @@ Tommy's Club/
 | POST | `/posts/delete/:id` | Delete own post |
 | GET | `/profile` | View / edit profile |
 | POST | `/account/delete` | Re-authenticate and permanently delete your account |
+| GET | `/settings` | Account settings |
+| POST | `/settings/username` | Change username |
+| POST | `/settings/email` | Request an email change |
+| POST | `/settings/password` | Change password |
 | GET | `/member/:username` | Public member profile |
 | GET | `/chat` | Real-time chat |
 | POST | `/chat/send` | Send message |

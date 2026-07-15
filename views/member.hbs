@@ -1,6 +1,6 @@
 <div class="profile-header">
     {{#if member.avatar_url}}
-    <img src="{{member.avatar_url}}" alt="" class="profile-avatar">
+    <img src="{{member.avatar_url}}" alt="{{member.username}}'s profile picture" class="profile-avatar">
     {{else}}
     <div class="profile-avatar-placeholder">{{avatarInitial member.username}}</div>
     {{/if}}

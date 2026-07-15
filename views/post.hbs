@@ -1,7 +1,7 @@
 <div class="post-view">
 
     <!-- Back link -->
-    <a href="/blog" class="post-view-back">&#x2190; Back to The Vault</a>
+    <a href="/blog" class="post-view-back">&#x2190; Back to the stories</a>
 
     <!-- Category -->
     {{#if post.categories}}
@@ -24,7 +24,7 @@
 
     <!-- Feature image -->
     {{#if post.feature_image}}
-    <img src="{{post.feature_image}}" alt="{{post.title}}" class="post-view-img">
+    <img src="{{post.feature_image}}" alt="{{post.title}}" class="post-view-img" loading="eager" fetchpriority="high">
     {{/if}}
 
     <!-- Body -->
@@ -41,7 +41,7 @@
 <section class="comments-section" id="comments" style="max-width:700px">
 
     <h3 class="comments-heading">
-        &#x1F4AC; {{commentCount}} Comment{{#gt commentCount 1}}s{{/gt}}
+        <i class="bi bi-chat-square-text" aria-hidden="true"></i> {{commentCount}} Comment{{#gt commentCount 1}}s{{/gt}}
     </h3>
 
     <!-- New comment form -->
@@ -76,7 +76,7 @@
         <div class="comment-item" id="comment-{{id}}">
             <div class="meta-avatar">
                 {{#if profiles.avatar_url}}
-                <img src="{{profiles.avatar_url}}" alt="">
+                <img src="{{profiles.avatar_url}}" alt="" loading="lazy">
                 {{else}}
                 <span class="meta-avatar-initials">{{avatarInitial profiles.username}}</span>
                 {{/if}}
@@ -126,7 +126,7 @@
                     <div class="comment-item reply-item" id="comment-{{id}}">
                         <div class="meta-avatar-xs">
                             {{#if profiles.avatar_url}}
-                            <img src="{{profiles.avatar_url}}" alt="">
+                            <img src="{{profiles.avatar_url}}" alt="" loading="lazy">
                             {{else}}
                             <span class="meta-avatar-initials-xs">{{avatarInitial profiles.username}}</span>
                             {{/if}}
@@ -186,7 +186,8 @@ document.querySelectorAll('.cancel-reply').forEach(function (btn) {
 <script>
 (function () {
     var KEYS  = ['fire','heart','eye','sparkle','black_heart'];
-    var EMOJI = { fire:'🔥', heart:'❤️', eye:'👁️', sparkle:'✨', black_heart:'🖤' };
+    var ICON = { fire:'bi-fire', heart:'bi-heart', eye:'bi-eye', sparkle:'bi-stars', black_heart:'bi-suit-heart-fill' };
+    var LABEL = { fire:'Fire', heart:'Heart', eye:'Interesting', sparkle:'Sparkle', black_heart:'Black heart' };
     var bar   = document.getElementById('reactionBar');
     if (!bar) return;
     var postId      = bar.dataset.postId;
@@ -200,9 +201,12 @@ document.querySelectorAll('.cancel-reply').forEach(function (btn) {
             btn.className = 'reaction-btn' + (userReacted.indexOf(key) !== -1 ? ' reaction-btn--active' : '');
             btn.setAttribute('data-key', key);
             btn.setAttribute('type', 'button');
+            btn.setAttribute('aria-label', LABEL[key] + ' reaction, ' + (counts[key] || 0));
+            btn.setAttribute('title', LABEL[key]);
             btn.addEventListener('click', function () { react(key); });
-            var emojiSpan = document.createElement('span');
-            emojiSpan.textContent = EMOJI[key];
+            var emojiSpan = document.createElement('i');
+            emojiSpan.className = 'bi ' + ICON[key];
+            emojiSpan.setAttribute('aria-hidden', 'true');
             var countSpan = document.createElement('span');
             countSpan.className = 'reaction-count';
             countSpan.textContent = counts[key] || 0;

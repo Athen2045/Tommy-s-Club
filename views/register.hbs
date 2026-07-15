@@ -24,45 +24,37 @@
         <form method="POST" action="/register" class="gate-form" id="registerForm">
             <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
-            <!-- Anonymous identity picker -->
-            <div class="gate-field">
-                <label class="gate-label">Anonymous Identity</label>
-                <div class="avatar-picker">
-                    <label class="avatar-pick-option">
-                        <input type="radio" name="default_avatar" value="m" checked>
-                        <img src="/assets/avatar-anon-m.svg" alt="Shadow">
-                    </label>
-                    <label class="avatar-pick-option">
-                        <input type="radio" name="default_avatar" value="f">
-                        <img src="/assets/avatar-anon-f.svg" alt="Phantom">
-                    </label>
-                </div>
-                <input type="hidden" name="avatar_url" id="avatarUrlInput" value="/assets/avatar-anon-m.svg">
-            </div>
-
             <!-- Alias with random generator -->
             <div class="gate-field">
-                <label class="gate-label">Alias <span style="color:var(--neon-cyan);cursor:pointer;margin-left:4px" id="genBtn" title="Randomise">&#x21BB;</span></label>
+                <div class="gate-label-row">
+                    <label class="gate-label" for="usernameInput">Username</label>
+                    <button class="alias-random" id="genBtn" type="button" title="Suggest a username">Suggest one</button>
+                </div>
                 <input type="text" name="username" id="usernameInput" class="gate-input"
-                    value="{{username}}" placeholder="NeonGhost42" required autofocus>
+                    value="{{username}}" placeholder="neon_ghost" minlength="3" maxlength="32"
+                    pattern="[a-zA-Z0-9_]{3,32}" autocomplete="username" required autofocus>
+                <span class="gate-helper">3–32 letters, numbers, or underscores. Every username is unique.</span>
             </div>
 
             <div class="gate-field">
-                <label class="gate-label">Email</label>
-                <input type="email" name="email" class="gate-input"
-                    value="{{email}}" placeholder="anon@member.club" required>
+                <label class="gate-label" for="registerEmail">Email</label>
+                <input type="email" name="email" id="registerEmail" class="gate-input"
+                    value="{{email}}" placeholder="anon@member.club" autocomplete="email" required>
             </div>
 
             <div class="gate-field">
-                <label class="gate-label">Password</label>
-                <input type="password" name="password" class="gate-input"
-                    placeholder="Min. 6 characters" required minlength="6">
+                <label class="gate-label" for="registerPassword">Create password</label>
+                <input type="password" name="password" id="registerPassword" class="gate-input"
+                    placeholder="8+ chars, uppercase, number, symbol" required minlength="8"
+                    pattern="(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}"
+                    title="Use at least 8 characters, including 1 capital letter, 1 number, and 1 symbol">
             </div>
 
             <div class="gate-field">
-                <label class="gate-label">Confirm Password</label>
-                <input type="password" name="password2" class="gate-input"
-                    placeholder="••••••••" required>
+                <span class="gate-helper">At least 8 characters with 1 capital letter, 1 number, and 1 symbol.</span>
+                <label class="gate-label" for="registerPasswordConfirm">Confirm password</label>
+                <input type="password" name="password2" id="registerPasswordConfirm" class="gate-input"
+                    placeholder="Repeat your password" required minlength="8">
             </div>
 
             <button type="submit" class="gate-btn">&#x25B8; JOIN TOMMY'S CLUB</button>
@@ -92,11 +84,17 @@
         });
     }
 
-    document.querySelectorAll('input[name="default_avatar"]').forEach(function (radio) {
-        radio.addEventListener('change', function () {
-            document.getElementById('avatarUrlInput').value =
-                this.value === 'f' ? '/assets/avatar-anon-f.svg' : '/assets/avatar-anon-m.svg';
-        });
-    });
+    var registerForm = document.getElementById('registerForm');
+    var password = registerForm && registerForm.querySelector('input[name="password"]');
+    var password2 = registerForm && registerForm.querySelector('input[name="password2"]');
+    if (registerForm && password && password2) {
+        function confirmPassword() {
+            password2.setCustomValidity(password.value === password2.value ? '' : 'Passwords do not match');
+        }
+        password.addEventListener('input', confirmPassword);
+        password2.addEventListener('input', confirmPassword);
+        registerForm.addEventListener('submit', confirmPassword);
+    }
+
 })();
 </script>

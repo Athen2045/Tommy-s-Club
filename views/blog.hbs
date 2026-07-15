@@ -1,8 +1,7 @@
-<!-- Hero -->
-<div class="blog-hero">
-    <div class="blog-hero-eyebrow">// members only &middot; bar open</div>
-    <h1 class="blog-hero-title">THE STORIES</h1>
-</div>
+<header class="blog-hero">
+    <div class="blog-hero-eyebrow">TOMMY'S CLUB &middot; INDEPENDENT STORIES &middot; ISSUE 01</div>
+    <h1 class="blog-hero-title">The Stories</h1>
+</header>
 
 <!-- Category filter strip -->
 {{#if categories.length}}
@@ -36,7 +35,7 @@
     {{#if featuredPost}}
     <a href="/blog/{{featuredPost.id}}" class="post-card">
         {{#if featuredPost.feature_image}}
-        <img src="{{featuredPost.feature_image}}" alt="{{featuredPost.title}}" class="post-card-img">
+        <img src="{{featuredPost.feature_image}}" alt="{{featuredPost.title}}" class="post-card-img" loading="eager" fetchpriority="high">
         {{/if}}
         {{#if featuredPost.categories}}
         <span class="post-card-cat">{{featuredPost.categories.name}}</span>
@@ -57,7 +56,7 @@
     {{#each recentPosts}}
     <a href="/blog/{{id}}" class="post-card">
         {{#if feature_image}}
-        <img src="{{feature_image}}" alt="{{title}}" class="post-card-img">
+        <img src="{{feature_image}}" alt="{{title}}" class="post-card-img" loading="lazy">
         {{/if}}
         {{#if categories}}
         <span class="post-card-cat">{{categories.name}}</span>

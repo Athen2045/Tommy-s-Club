@@ -1,6 +1,8 @@
 <!-- Brick wall background -->
 <div class="brick-wall" style="opacity:0.65"></div>
 
+<button class="boot-skip" id="bootSkip" type="button">Skip intro</button>
+
 <!-- Boot sequence wrapper: dots → POST text → Tommy's neon sign -->
 <div class="boot-wrap">
     <!-- Stage 1: Loading dots -->
@@ -24,6 +26,18 @@
     </div>
 </div>
 
+<script>
+(function () {
+    var skip = document.getElementById('bootSkip');
+    if (!skip) return;
+    skip.addEventListener('click', function () {
+        document.body.classList.add('intro-skipped');
+        var email = document.querySelector('.boot-login input[type="email"]');
+        if (email) email.focus();
+    });
+})();
+</script>
+
 <!-- Stage 4: Login form fades in from bottom -->
 <div class="boot-login">
     {{#if errorMessage}}
@@ -36,13 +50,13 @@
         <form method="POST" action="/login" class="gate-form">
             <input type="hidden" name="_csrf" value="{{csrfToken}}">
         <div class="gate-field">
-            <label class="gate-label">Email</label>
-            <input type="email" name="email" class="gate-input" value="{{email}}"
+            <label class="gate-label" for="loginEmail">Email</label>
+            <input type="email" name="email" id="loginEmail" class="gate-input" value="{{email}}"
                 placeholder="anon@member.club" required autofocus autocomplete="email">
         </div>
         <div class="gate-field">
-            <label class="gate-label">Password</label>
-            <input type="password" name="password" class="gate-input"
+            <label class="gate-label" for="loginPassword">Password</label>
+            <input type="password" name="password" id="loginPassword" class="gate-input"
                 placeholder="••••••••" required autocomplete="current-password">
         </div>
         <button type="submit" class="gate-btn">&#x25B8; ENTER</button>

@@ -217,6 +217,7 @@ module.exports.updateProfile = async (userId, updates) => {
         .from('profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', userId);
+    if (error?.code === '23505') throw new Error('Username already exists — choose a different one');
     if (error) throw new Error('unable to update profile');
 };
 
