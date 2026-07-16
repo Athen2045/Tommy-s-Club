@@ -28,6 +28,8 @@
 
     <form method="POST" action="/profile" enctype="multipart/form-data" class="wf-stack profile-form" style="gap:16px">
         <input type="hidden" name="_csrf" value="{{csrfToken}}">
+        <input type="hidden" name="avatar_url" id="profileAvatarUrl">
+        <input type="hidden" name="avatar_file_id" id="profileAvatarFileId">
         <div class="gate-field">
             <label class="gate-label" for="profileUsername">Username</label>
             <input type="text" class="gate-input" id="profileUsername" name="username"
@@ -65,8 +67,11 @@
                         <span class="avatar-choice-check" aria-hidden="true">&#x2713;</span>
                     </label>
                 </div>
-                <input type="file" class="gate-input file-input" id="profileAvatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif">
+                <input type="file" class="gate-input file-input" id="profileAvatar" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
+                    data-media-kind="avatar" data-media-url-field="#profileAvatarUrl"
+                    data-media-id-field="#profileAvatarFileId" data-media-feedback="#profileAvatarFeedback">
                 <span class="form-helper">Choose a JPEG, PNG, GIF, WebP, or AVIF image.</span>
+                <span class="form-helper form-upload-feedback" id="profileAvatarFeedback" aria-live="polite"></span>
             </div>
         </div>
         <button type="submit" class="gate-btn" style="width:auto;padding:10px 28px;display:inline-block">

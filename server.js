@@ -11,7 +11,12 @@ const path           = require('path');
 const helmet         = require('helmet');
 const rateLimit      = require('express-rate-limit');
 const { WebSocketServer } = require('ws');
-const { createClient }    = require('@supabase/supabase-js');
+const {
+    createServerClient,
+    SupabaseSessionStore,
+    SupabaseRateLimitStore,
+    SupabaseRuntimeState
+} = require('./platform-store');
 
 const blogService = require('./blog-service');
 const authService = require('./auth-service');
@@ -19,12 +24,29 @@ const authService = require('./auth-service');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const isProd = process.env.NODE_ENV === 'production';
+const APP_URL = (process.env.APP_URL || 'http://localhost:8080').replace(/\/$/, '');
+
+let parsedAppUrl;
+try {
+    parsedAppUrl = new URL(APP_URL);
+} catch (_) {
+    throw new Error('APP_URL must be a valid absolute URL');
+}
+if (!['http:', 'https:'].includes(parsedAppUrl.protocol)) {
+    throw new Error('APP_URL must use http or https');
+}
+if (isProd && APP_URL !== 'https://tommysclub.vercel.app') {
+    throw new Error('APP_URL must be https://tommysclub.vercel.app in production');
+}
 
 if (isProd && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) {
     throw new Error('SESSION_SECRET must be at least 32 characters in production');
 }
 
 if (isProd) app.set('trust proxy', 1);
+
+const platformClient = createServerClient();
+const runtimeState = new SupabaseRuntimeState(platformClient);
 
 // ── ImageKit ──────────────────────────────────────────────
 const imagekit = new ImageKit({
@@ -35,8 +57,9 @@ const imagekit = new ImageKit({
 
 // ── File upload — type + size guards ─────────────────────
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+const SERVER_UPLOAD_MAX = isProd ? 4 * 1024 * 1024 : 8 * 1024 * 1024;
 const upload = multer({
-    limits: { fileSize: 8 * 1024 * 1024 },   // 8 MB max
+    limits: { fileSize: SERVER_UPLOAD_MAX },
     fileFilter(_req, file, cb) {
         if (ALLOWED_MIME.includes(file.mimetype)) return cb(null, true);
         cb(new Error('Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'));
@@ -48,7 +71,7 @@ function parseImageUpload(fieldName) {
     return (req, res, next) => middleware(req, res, (err) => {
         if (err) {
             req.uploadError = err.code === 'LIMIT_FILE_SIZE'
-                ? 'Image must be 8 MB or smaller.'
+                ? `Image must be ${isProd ? '4' : '8'} MB or smaller for a server upload.`
                 : err.message;
         }
         next();
@@ -150,7 +173,7 @@ app.use(helmet({
             styleSrc:    ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net', 'fonts.googleapis.com'],
             fontSrc:     ["'self'", 'fonts.gstatic.com', 'cdn.jsdelivr.net'],
             imgSrc:      ["'self'", 'data:', 'blob:', 'ik.imagekit.io', '*.imagekit.io'],
-            connectSrc:  ["'self'", process.env.SUPABASE_URL || ''],
+            connectSrc:  ["'self'", process.env.SUPABASE_URL || '', 'https://upload.imagekit.io'],
         }
     }
 }));
@@ -162,6 +185,7 @@ const loginLimiter = rateLimit({
     message: 'Too many login attempts — please try again in 15 minutes.',
     standardHeaders: true,
     legacyHeaders: false,
+    ...(isProd ? { store: new SupabaseRateLimitStore('login', platformClient) } : {}),
 });
 
 const registerLimiter = rateLimit({
@@ -170,6 +194,31 @@ const registerLimiter = rateLimit({
     message: 'Too many accounts created — please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
+    ...(isProd ? { store: new SupabaseRateLimitStore('register', platformClient) } : {}),
+});
+
+const mediaAuthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    ...(isProd ? { store: new SupabaseRateLimitStore('media', platformClient) } : {}),
+});
+
+const confirmationLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    ...(isProd ? { store: new SupabaseRateLimitStore('confirmation', platformClient) } : {}),
+});
+
+const wsTokenLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    ...(isProd ? { store: new SupabaseRateLimitStore('websocket', platformClient) } : {}),
 });
 
 // ── Middleware ────────────────────────────────────────────
@@ -178,6 +227,7 @@ app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(express.json({ limit: '100kb' }));
 
 app.use(session({
+    ...(isProd ? { store: new SupabaseSessionStore(platformClient) } : {}),
     secret: process.env.SESSION_SECRET || (isProd
         ? (() => { throw new Error('SESSION_SECRET env var must be set in production'); })()
         : 'dev-secret-change-me-in-production'),
@@ -190,6 +240,15 @@ app.use(session({
         sameSite: 'lax'          // CSRF mitigation for same-site form posts
     }
 }));
+
+app.use((req, res, next) => {
+    const privatePrefixes = ['/chat', '/profile', '/settings', '/posts', '/categories', '/member', '/admin', '/account'];
+    if (['/', '/login', '/register', '/terms', '/enter', '/auth/confirm'].includes(req.path) ||
+        privatePrefixes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
+        res.set('Cache-Control', 'private, no-store');
+    }
+    next();
+});
 
 // Browser state-changing requests must carry a token issued to this session.
 // This protects form and fetch endpoints against cross-site request forgery.
@@ -239,7 +298,7 @@ app.use((req, res, next) => {
 function isOpenPath(pathname) {
     return pathname === '/' || pathname === '/login' || pathname === '/register' ||
         pathname === '/pending' || pathname === '/rejected' || pathname === '/terms' ||
-        pathname === '/about' || pathname === '/auth/refresh-status' ||
+        pathname === '/about' || pathname === '/auth/refresh-status' || pathname === '/auth/confirm' ||
         pathname === '/blog' || pathname.startsWith('/blog/');
 }
 
@@ -302,6 +361,35 @@ function streamUpload(req, folder = 'blog') {
     });
 }
 
+const DIRECT_MEDIA_KINDS = Object.freeze({
+    'post-cover': 'posts/covers',
+    'post-inline': 'posts/inline',
+    avatar: 'avatars',
+    chat: 'chat'
+});
+
+function directMediaFolder(userId, kind) {
+    const suffix = DIRECT_MEDIA_KINDS[kind];
+    return suffix ? `/tommys-club/${userId}/${suffix}` : null;
+}
+
+async function verifyDirectMedia(userId, kind, fileId, submittedUrl) {
+    const expectedFolder = directMediaFolder(userId, kind);
+    if (!expectedFolder || typeof fileId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(fileId)) {
+        throw new Error('Invalid uploaded image');
+    }
+    const details = await imagekit.getFileDetails(fileId);
+    const pathName = details.filePath || '';
+    const fileUrl = details.url || '';
+    if (details.fileType !== 'image' || Number(details.size) > 8 * 1024 * 1024 ||
+        !pathName.startsWith(`${expectedFolder}/`) ||
+        !process.env.IMAGEKIT_URL_ENDPOINT || !fileUrl.startsWith(process.env.IMAGEKIT_URL_ENDPOINT) ||
+        (submittedUrl && submittedUrl !== fileUrl)) {
+        throw new Error('Invalid uploaded image');
+    }
+    return { url: fileUrl, fileId: details.fileId };
+}
+
 function transformedImageUrl(url, preset) {
     const transforms = {
         post: 'w-1600,h-1600,c-at_max,q-82,f-auto',
@@ -321,7 +409,15 @@ function safeJson(value) {
 
 // ── Routes: public ────────────────────────────────────────
 
-app.get('/', (req, res) => res.redirect('/blog'));
+app.get('/', (req, res) => {
+    const user = req.session.user;
+    if (!user) return res.redirect('/login');
+    if (user.email_verified !== true) return res.redirect('/login?unverified=1');
+    if (user.status === 'rejected') return res.redirect('/rejected');
+    if (!user.terms_accepted) return res.redirect('/terms');
+    if (req.session.entryTransitionSeen === false) return res.redirect('/enter');
+    return res.redirect('/blog');
+});
 
 app.get('/about', (req, res) => res.render('about'));
 
@@ -433,11 +529,43 @@ const GATE = { layout: 'gate' };
 
 app.get('/login', (req, res) => {
     if (req.session.user) return res.redirect('/blog');
+    const flash = req.session.flash;
+    delete req.session.flash;
     res.render('login', {
         ...GATE,
-        successMessage: req.query.deleted === '1' ? 'Your account and member data have been deleted.' : null,
-        errorMessage: req.query.unverified === '1' ? 'Please verify your email address before continuing.' : null
+        successMessage: flash?.type === 'success'
+            ? flash.message
+            : (req.query.deleted === '1' ? 'Your account and member data have been deleted.' : null),
+        verificationSuccess: flash?.code === 'email_verified',
+        errorMessage: flash?.type === 'error'
+            ? flash.message
+            : (req.query.unverified === '1' ? 'Please verify your email address before continuing.' : null)
     });
+});
+
+app.get('/auth/confirm', confirmationLimiter, async (req, res) => {
+    const tokenHash = req.query.token_hash;
+    if (req.query.type !== 'email' || typeof tokenHash !== 'string') {
+        req.session.flash = {
+            type: 'error',
+            message: 'That verification link is invalid or incomplete. Request a new email and try again.'
+        };
+        return req.session.save(() => res.redirect('/login'));
+    }
+    try {
+        await authService.verifyEmailToken(tokenHash);
+        req.session.flash = {
+            type: 'success',
+            code: 'email_verified',
+            message: 'Email verified. You can sign in now.'
+        };
+    } catch (_) {
+        req.session.flash = {
+            type: 'error',
+            message: 'That verification link has expired or was already used. Try signing in or request a new email.'
+        };
+    }
+    req.session.save(() => res.redirect('/login'));
 });
 
 app.post('/login', loginLimiter, async (req, res) => {
@@ -449,7 +577,10 @@ app.post('/login', loginLimiter, async (req, res) => {
             req.session.user = user;
             req.session.csrfToken = crypto.randomBytes(32).toString('hex');
             req.session.entryTransitionSeen = false;
-            res.redirect('/enter');
+            req.session.save(saveError => {
+                if (saveError) return res.status(500).render('login', { ...GATE, errorMessage: 'Unable to save your secure session' });
+                res.redirect('/enter');
+            });
         });
     } catch (err) {
         res.render('login', { ...GATE, errorMessage: err.message, email: req.body.email });
@@ -524,7 +655,9 @@ app.get('/auth/refresh-status', async (req, res) => {
 
 app.get('/terms', (req, res) => {
     if (!req.session.user) return res.redirect('/login');
-    if (req.session.user.terms_accepted) return res.redirect('/blog');
+    if (req.session.user.terms_accepted) {
+        return res.redirect(req.session.entryTransitionSeen === false ? '/enter' : '/blog');
+    }
     res.render('terms', GATE);
 });
 
@@ -535,13 +668,38 @@ app.post('/terms', ensureLogin, async (req, res) => {
     try {
         await blogService.acceptTerms(req.session.user.id);
         req.session.user.terms_accepted = true;
-        res.redirect('/enter');
+        req.session.save(saveError => {
+            if (saveError) {
+                return res.status(500).render('terms', {
+                    ...GATE,
+                    errorMessage: 'Your agreement was saved, but the session could not be updated. Sign in again to continue.'
+                });
+            }
+            res.redirect('/enter');
+        });
     } catch (err) {
         res.render('terms', { ...GATE, errorMessage: err.message });
     }
 });
 
 // ── Routes: profile ───────────────────────────────────────
+
+app.post('/media/auth', ensureLogin, mediaAuthLimiter, (req, res) => {
+    const kind = typeof req.body.kind === 'string' ? req.body.kind : '';
+    const folder = directMediaFolder(req.session.user.id, kind);
+    if (!folder) return res.status(400).json({ error: 'Unsupported media destination' });
+    const authentication = imagekit.getAuthenticationParameters();
+    res.set('Cache-Control', 'private, no-store');
+    res.json({
+        ...authentication,
+        publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+        urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+        uploadEndpoint: 'https://upload.imagekit.io/api/v1/files/upload',
+        folder,
+        maxBytes: 8 * 1024 * 1024,
+        allowedTypes: ALLOWED_MIME
+    });
+});
 
 app.get('/profile', ensureLogin, async (req, res) => {
     try {
@@ -553,6 +711,7 @@ app.get('/profile', ensureLogin, async (req, res) => {
 });
 
 app.post('/profile', ensureLogin, parseImageUpload('avatar'), verifyCsrfToken, async (req, res) => {
+    let newFileId = null;
     try {
         if (req.uploadError) throw new Error(req.uploadError);
         const username = typeof req.body.username === 'string' ? req.body.username.trim().toLowerCase() : '';
@@ -560,16 +719,40 @@ app.post('/profile', ensureLogin, parseImageUpload('avatar'), verifyCsrfToken, a
         if (!/^[A-Za-z0-9_]{3,32}$/.test(username)) throw new Error('Username must be 3–32 characters using letters, numbers, or underscores');
         if (bio.length > 500) throw new Error('Bio must be 500 characters or fewer');
         const updates = { bio, username };
-        if (req.file) {
+        if (req.body.avatar_file_id) {
+            const directMedia = await verifyDirectMedia(
+                req.session.user.id,
+                'avatar',
+                req.body.avatar_file_id,
+                req.body.avatar_url
+            );
+            updates.avatar_url = directMedia.url;
+            updates.avatar_file_id = directMedia.fileId;
+            newFileId = directMedia.fileId;
+        } else if (req.file) {
             const result = await streamUpload(req, 'avatars');
             updates.avatar_url = result.url;
+            updates.avatar_file_id = result.fileId;
+            newFileId = result.fileId;
         } else if (authService.DEFAULT_AVATARS[req.body.avatar_choice]) {
             updates.avatar_url = authService.DEFAULT_AVATARS[req.body.avatar_choice];
+            updates.avatar_file_id = null;
         }
+        const previousFileId = newFileId || updates.avatar_file_id === null
+            ? await blogService.getProfileMediaFileId(req.session.user.id)
+            : null;
         await blogService.updateProfile(req.session.user.id, updates);
-        req.session.user = { ...req.session.user, ...updates };
-        res.render('profile', { profile: { ...req.session.user, ...updates }, successMessage: 'Profile updated!' });
+        const publicUpdates = { ...updates };
+        delete publicUpdates.avatar_file_id;
+        req.session.user = { ...req.session.user, ...publicUpdates };
+        if (previousFileId && previousFileId !== newFileId) {
+            imagekit.deleteFile(previousFileId).catch(error => {
+                console.error('Unable to remove replaced profile image:', error.message);
+            });
+        }
+        res.render('profile', { profile: { ...req.session.user, ...publicUpdates }, successMessage: 'Profile updated!' });
     } catch (err) {
+        if (newFileId) imagekit.deleteFile(newFileId).catch(() => {});
         res.render('profile', { profile: req.session.user, errorMessage: err.message });
     }
 });
@@ -691,13 +874,28 @@ app.post('/posts/add', ensureLogin, parseImageUpload('featureImage'), verifyCsrf
         }
         if (typeof req.body.body !== 'string' || req.body.body.length > 200000) throw new Error('Post content is too large');
         let imageUrl = '';
-        if (req.file) {
+        if (req.body.feature_image_file_id) {
+            const directMedia = await verifyDirectMedia(
+                req.session.user.id,
+                'post-cover',
+                req.body.feature_image_file_id,
+                req.body.feature_image_url
+            );
+            imageUrl = directMedia.url;
+            uploadedFileId = directMedia.fileId;
+        } else if (req.file) {
             const result = await streamUpload(req);
             imageUrl = result.url;
             uploadedFileId = result.fileId;
         }
         const intent = req.body.intent === 'publish' ? 'publish' : 'draft';
-        const postData = { ...req.body, title: req.body.title.trim(), featureImage: imageUrl, published: intent === 'publish' };
+        const postData = {
+            ...req.body,
+            title: req.body.title.trim(),
+            featureImage: imageUrl,
+            featureImageFileId: uploadedFileId,
+            published: intent === 'publish'
+        };
         await blogService.addPost(postData, req.session.user.id);
         res.redirect('/posts');
     } catch (err) {
@@ -720,6 +918,15 @@ app.post('/posts/add', ensureLogin, parseImageUpload('featureImage'), verifyCsrf
 app.post('/posts/upload-image', ensureLogin, parseImageUpload('image'), verifyCsrfToken, async (req, res) => {
     try {
         if (req.uploadError) throw new Error(req.uploadError);
+        if (req.body.image_file_id) {
+            const directMedia = await verifyDirectMedia(
+                req.session.user.id,
+                'post-inline',
+                req.body.image_file_id,
+                req.body.image_url
+            );
+            return res.json({ url: transformedImageUrl(directMedia.url, 'post'), fileId: directMedia.fileId });
+        }
         if (!req.file) return res.status(400).json({ error: 'No file provided' });
         const result = await streamUpload(req, 'posts');
         res.json({ url: transformedImageUrl(result.url, 'post') });
@@ -743,7 +950,12 @@ app.post('/posts/delete/:id', ensureLogin, async (req, res) => {
         if (!req.session.user.isAdmin && post.author_id !== req.session.user.id) {
             return res.status(403).render('404');
         }
-        await blogService.deletePostById(req.params.id);
+        const deleted = await blogService.deletePostById(req.params.id);
+        if (deleted?.feature_image_file_id) {
+            imagekit.deleteFile(deleted.feature_image_file_id).catch(error => {
+                console.error('Unable to remove deleted post image:', error.message);
+            });
+        }
         res.redirect('/posts');
     } catch (err) {
         res.status(500).send('Unable to remove post');
@@ -826,7 +1038,19 @@ app.post('/chat/send', ensureLogin, parseImageUpload('image'), verifyCsrfToken, 
     try {
         if (req.uploadError) throw new Error(req.uploadError);
         let media = null;
-        if (req.file) {
+        if (req.body.image_file_id) {
+            const directMedia = await verifyDirectMedia(
+                req.session.user.id,
+                'chat',
+                req.body.image_file_id,
+                req.body.image_url
+            );
+            uploadedFileId = directMedia.fileId;
+            media = {
+                imageUrl: directMedia.url,
+                imageFileId: directMedia.fileId
+            };
+        } else if (req.file) {
             const uploaded = await streamUpload(req, 'chat');
             uploadedFileId = uploaded.fileId;
             media = {
@@ -879,20 +1103,36 @@ app.get('/chat/unread-count', ensureLogin, async (req, res) => {
     }
 });
 
-// ── WS auth token (one-time, 30s TTL) ────────────────────
-const wsTokens = new Map();
+app.get('/chat/messages', ensureLogin, async (req, res) => {
+    const after = Number.parseInt(req.query.after || '0', 10);
+    if (!Number.isInteger(after) || after < 0) return res.status(400).json({ error: 'Invalid message cursor' });
+    try {
+        const messages = await blogService.getMessagesAfter(after, 100);
+        res.json({ messages: messages.map(message => ({
+            id: message.id,
+            author_id: message.author_id,
+            body: message.body,
+            image_url: message.image_url,
+            created_at: message.created_at,
+            username: message.profiles?.username || null,
+            avatar_url: message.profiles?.avatar_url || null,
+            image_full_url: message.image_url ? transformedImageUrl(message.image_url, 'post') : null,
+            image_thumb_url: message.image_url ? transformedImageUrl(message.image_url, 'chat') : null
+        })) });
+    } catch (_) {
+        res.status(503).json({ error: 'Messages are temporarily unavailable' });
+    }
+});
 
-app.get('/chat/ws-token', ensureLogin, (req, res) => {
-    const token = crypto.randomBytes(20).toString('hex');
-    wsTokens.set(token, {
-        userId:   req.session.user.id,
-        username: req.session.user.username,
-        isAdmin:  !!req.session.user.isAdmin,
-        exp:      Date.now() + 30_000
-    });
-    // Clean up expired tokens periodically
-    for (const [t, v] of wsTokens) if (Date.now() > v.exp) wsTokens.delete(t);
-    res.json({ token });
+// ── WS auth token (one-time, 30s TTL) ────────────────────
+app.get('/chat/ws-token', ensureLogin, wsTokenLimiter, async (req, res) => {
+    try {
+        const token = await runtimeState.issueWebSocketToken(req.session.user);
+        res.set('Cache-Control', 'private, no-store');
+        res.json({ token });
+    } catch (_) {
+        res.status(503).json({ error: 'Realtime connection is temporarily unavailable' });
+    }
 });
 
 // ── 404 ───────────────────────────────────────────────────
@@ -904,12 +1144,12 @@ const wss = new WebSocketServer({ server: httpServer, path: '/chat/ws' });
 
 // Server-side Supabase client for the realtime subscription
 // (anon key never sent to browser)
-const sbRelay = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-);
+const sbRelay = createServerClient();
 
+let realtimeRelayStarted = false;
 function startRealtimeRelay() {
+    if (realtimeRelayStarted) return;
+    realtimeRelayStarted = true;
     sbRelay.channel('server:messages')
         .on('postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'messages' },
@@ -942,27 +1182,37 @@ function startRealtimeRelay() {
         .subscribe();
 }
 
-wss.on('connection', (ws, req) => {
+wss.on('connection', async (ws, req) => {
     const url   = new URL(req.url, `http://localhost`);
     const token = url.searchParams.get('token');
-    const data  = wsTokens.get(token);
+    let data = null;
+    try {
+        data = await runtimeState.consumeWebSocketToken(token);
+    } catch (_) {
+        ws.close(1013, 'Realtime authentication unavailable');
+        return;
+    }
 
-    if (!token || !data || Date.now() > data.exp) {
+    if (!token || !data) {
         ws.close(4001, 'Unauthorized');
         return;
     }
-    wsTokens.delete(token);          // one-time use
-    ws.userId = data.userId;
+    ws.userId = data.user_id;
     ws.on('error', () => {});        // absorb socket errors
 });
 
 // ── Start ─────────────────────────────────────────────────
-blogService.initialize()
+const ready = blogService.initialize()
     .then(authService.initialize)
     .then(() => {
         startRealtimeRelay();
-        httpServer.listen(PORT, () =>
-            console.log(`Server running on http://localhost:${PORT}`)
-        );
+        if (!process.env.VERCEL) {
+            httpServer.listen(PORT, () =>
+                console.log(`Server running on http://localhost:${PORT}`)
+            );
+        }
     })
     .catch(err => console.error('Failed to start:', err));
+
+module.exports = httpServer;
+module.exports.ready = ready;

@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-Security fixes are currently applied to the latest code on the `main` branch.
+Security fixes are currently applied to the latest code on the repository’s default branch.
 
 | Version | Supported |
 | --- | --- |
-| Latest `main` | Yes |
+| Latest default branch | Yes |
 | Older commits and forks | No |
 
 This project is an open-source test platform. Deployments may differ depending
@@ -54,14 +54,21 @@ Deployments should:
   model is intentionally redesigned
 - Use a shared, persistent session store instead of the default in-memory
   session store when running more than one production instance
+- Set `APP_URL` to the exact HTTPS origin used by Supabase confirmation links
+- Apply `20260716-platform-hardening.sql` before deploying the matching code
 - Keep dependencies and `package-lock.json` up to date
 
 ## Built-in Protections
 
 Tommy's Club currently includes CSRF tokens for state-changing requests,
-secure session cookie settings, Helmet security headers, login and registration
-rate limits, sanitized rich-text rendering, validated image uploads, ownership
-checks, and one-time WebSocket authentication tokens.
+secure session cookie settings, Helmet security headers, distributed login and
+registration rate limits, sanitized rich-text rendering, direct uploads that
+are verified against ImageKit server-side, ownership checks, and hashed
+one-time WebSocket authentication tokens.
+
+If an email confirmation URL or user refresh token is accidentally published,
+revoke that user’s Supabase Auth sessions promptly. Project API keys only need
+rotation when an actual secret or service-role key was exposed.
 
 These protections reduce risk but do not replace secure deployment, database
 backups, access control review, or dependency maintenance.

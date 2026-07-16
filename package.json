@@ -4,15 +4,18 @@
   "description": "Tommy's Club — private invite-only community platform",
   "main": "server.js",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check blog-service.js && node --check public/js/chat.js && node --check public/js/entry-transition.js && node --check public/js/forms.js"
+    "check": "node --check server.js && node --check auth-service.js && node --check blog-service.js && node --check platform-store.js && node --check public/js/chat.js && node --check public/js/entry-transition.js && node --check public/js/forms.js && node --check public/js/media-upload.js"
   },
   "author": "Allan John",
   "license": "ISC",
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "animejs": "^4.5.0",

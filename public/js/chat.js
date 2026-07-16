@@ -22,6 +22,9 @@
     var selectedImage = null;
     var previewUrl = '';
     var mentionStart = -1;
+    var reconnectFailures = 0;
+    var pollingTimer = null;
+    var lastMessageId = 0;
     var allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
 
     function formatTime(ts) {
@@ -145,6 +148,14 @@
         return outer;
     }
 
+    function appendMessage(message) {
+        if (!message || !message.id || container.querySelector('.chat-msg[data-id="' + String(message.id) + '"]')) return;
+        container.appendChild(buildMessage(message));
+        lastMessageId = Math.max(lastMessageId, Number(message.id) || 0);
+        localStorage.setItem('tommys_club_last_msg', String(lastMessageId));
+        scrollToBottom();
+    }
+
     function clearSelectedImage() {
         selectedImage = null;
         imageInput.value = '';
@@ -195,18 +206,28 @@
         sendBtn.setAttribute('aria-busy', 'true');
         sendBtn.textContent = 'Sending…';
 
-        var options = { method: 'POST', headers: { 'X-CSRF-Token': window.CSRF_TOKEN, 'Accept': 'application/json' } };
-        if (selectedImage) {
-            var formData = new FormData();
-            formData.append('body', body);
-            formData.append('image', selectedImage);
-            options.body = formData;
-        } else {
-            options.headers['Content-Type'] = 'application/json';
-            options.body = JSON.stringify({ body: body });
-        }
+        var mediaPromise = selectedImage
+            ? window.TommyMedia.upload(selectedImage, 'chat', function (percent) {
+                feedback.textContent = 'Uploading image… ' + percent + '%';
+            })
+            : Promise.resolve(null);
 
-        fetch('/chat/send', options)
+        mediaPromise.then(function (media) {
+            feedback.textContent = media ? 'Sending image…' : '';
+            return fetch('/chat/send', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': window.CSRF_TOKEN,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    body: body,
+                    image_url: media ? media.url : null,
+                    image_file_id: media ? media.fileId : null
+                })
+            });
+        })
             .then(responseJson)
             .then(function () {
                 inputEl.value = '';
@@ -243,8 +264,34 @@
     });
 
     var lastMessage = container.querySelector('.chat-msg:last-child');
-    if (lastMessage) localStorage.setItem('tommys_club_last_msg', lastMessage.dataset.id);
+    if (lastMessage) {
+        lastMessageId = Number(lastMessage.dataset.id) || 0;
+        localStorage.setItem('tommys_club_last_msg', lastMessage.dataset.id);
+    }
     scrollToBottom();
+
+    function pollMessages() {
+        fetch('/chat/messages?after=' + encodeURIComponent(String(lastMessageId)), {
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(responseJson)
+            .then(function (data) {
+                (data.messages || []).forEach(appendMessage);
+            })
+            .catch(function () {});
+    }
+
+    function startPolling() {
+        if (pollingTimer) return;
+        pollMessages();
+        pollingTimer = window.setInterval(pollMessages, 3000);
+    }
+
+    function stopPolling() {
+        if (!pollingTimer) return;
+        window.clearInterval(pollingTimer);
+        pollingTimer = null;
+    }
 
     function connectWebSocket() {
         fetch('/chat/ws-token')
@@ -252,22 +299,28 @@
             .then(function (data) {
                 var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
                 var socket = new WebSocket(protocol + '://' + location.host + '/chat/ws?token=' + encodeURIComponent(data.token));
+                socket.onopen = function () {
+                    reconnectFailures = 0;
+                    stopPolling();
+                };
                 socket.onmessage = function (event) {
                     try {
                         var message = JSON.parse(event.data);
-                        if (message.type === 'message') {
-                            container.appendChild(buildMessage(message));
-                            localStorage.setItem('tommys_club_last_msg', String(message.id));
-                            scrollToBottom();
-                        }
+                        if (message.type === 'message') appendMessage(message);
                     } catch (_) {}
                 };
                 socket.onclose = function (event) {
-                    if (event.code !== 4001) window.setTimeout(connectWebSocket, 3000);
+                    reconnectFailures++;
+                    if (reconnectFailures >= 3) startPolling();
+                    if (event.code !== 4001) window.setTimeout(connectWebSocket, Math.min(15000, 2000 * reconnectFailures));
                 };
                 socket.onerror = function () {};
             })
-            .catch(function () { window.setTimeout(connectWebSocket, 5000); });
+            .catch(function () {
+                reconnectFailures++;
+                if (reconnectFailures >= 3) startPolling();
+                window.setTimeout(connectWebSocket, Math.min(15000, 2000 * reconnectFailures));
+            });
     }
     connectWebSocket();
 

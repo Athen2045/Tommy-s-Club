@@ -47,10 +47,10 @@
                         <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <button type="submit" class="btn-approve">Approve</button>
                     </form>
-                    <form method="POST" action="/admin/approvals/{{id}}/reject" style="display:inline;margin-left:6px">
+                    <form method="POST" action="/admin/approvals/{{id}}/reject" style="display:inline;margin-left:6px"
+                        data-confirm="Reject this member?">
                         <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
-                        <button type="submit" class="btn-reject"
-                            onclick="return confirm('Reject this member?')">Reject</button>
+                        <button type="submit" class="btn-reject">Reject</button>
                     </form>
                 </td>
             </tr>

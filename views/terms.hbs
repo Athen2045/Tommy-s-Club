@@ -26,9 +26,10 @@
         <input type="hidden" name="_csrf" value="{{csrfToken}}">
         <label class="terms-check-label">
             <input type="checkbox" name="agreed" value="1" id="agreedBox"
-                onchange="document.getElementById('termsBtn').disabled = !this.checked">
+                aria-describedby="termsAgreementHelp">
             I have read and agree to the Club's rules
         </label>
+        <span class="visually-hidden" id="termsAgreementHelp">Agreement is required before entering Tommy's Club.</span>
         <button type="submit" class="gate-btn" id="termsBtn" disabled style="width:100%">
             &#x25B8; ENTER CLUB
         </button>

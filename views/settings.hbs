@@ -72,7 +72,7 @@
         <h2>Delete account</h2>
         <p>This permanently removes your profile, posts, comments, reactions, and messages.</p>
         <form method="POST" action="/account/delete" class="settings-form"
-            onsubmit="return confirm('Permanently delete your account and all member data? This cannot be undone.')">
+            data-confirm="Permanently delete your account and all member data? This cannot be undone.">
             <input type="hidden" name="_csrf" value="{{csrfToken}}">
             <label class="gate-label" for="delete-current-password">Confirm with your current password</label>
             <input class="gate-input" id="delete-current-password" name="current_password"

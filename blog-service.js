@@ -109,6 +109,7 @@ module.exports.addPost = async (postData, authorId) => {
         body: postData.body,
         excerpt: postData.body ? postData.body.replace(/<[^>]*>/g, '').slice(0, 200) : null,
         feature_image: postData.featureImage || null,
+        feature_image_file_id: postData.featureImageFileId || null,
         published: postData.published === true,
         category_id: postData.category || null,
         author_id: authorId
@@ -142,8 +143,14 @@ module.exports.getPostsByAuthor = async (authorId) => {
 };
 
 module.exports.deletePostById = async (id) => {
+    const { data: post } = await supabase
+        .from('posts')
+        .select('feature_image_file_id')
+        .eq('id', id)
+        .maybeSingle();
     const { error } = await supabase.from('posts').delete().eq('id', id);
     if (error) throw new Error('unable to delete post');
+    return post || null;
 };
 
 // ── Categories ────────────────────────────────────────────
@@ -234,6 +241,15 @@ module.exports.getProfile = async (userId) => {
         .single();
     if (error) return null;
     return data;
+};
+
+module.exports.getProfileMediaFileId = async (userId) => {
+    const { data } = await supabase
+        .from('profiles')
+        .select('avatar_file_id')
+        .eq('id', userId)
+        .maybeSingle();
+    return data?.avatar_file_id || null;
 };
 
 module.exports.updateProfile = async (userId, updates) => {
@@ -354,6 +370,17 @@ module.exports.getMessageHistory = async (limit) => {
         .limit(limit);
     if (error) return [];
     return attachProfiles((data || []).reverse());
+};
+
+module.exports.getMessagesAfter = async (afterId, limit) => {
+    const { data, error } = await supabase
+        .from('messages')
+        .select('id, body, image_url, author_id, created_at')
+        .gt('id', afterId)
+        .order('id', { ascending: true })
+        .limit(Math.min(Number(limit) || 100, 100));
+    if (error) throw new Error('unable to load messages');
+    return attachProfiles(data || []);
 };
 
 module.exports.insertMessage = async (authorId, body, media) => {

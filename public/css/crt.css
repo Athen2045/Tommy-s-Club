@@ -579,6 +579,44 @@ a.gate-btn {
     background: rgba(76,255,156,0.04);
 }
 
+.verification-stamp {
+    width: min(100%, 380px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(76,255,156,0.62);
+    background: rgba(76,255,156,0.08);
+    color: var(--neon-green);
+    font: 11px/1.45 var(--f-mono);
+    box-shadow: 3px 3px 0 rgba(76,255,156,0.16);
+    opacity: 1;
+}
+.verification-stamp.is-visible { opacity: 1; }
+.verification-stamp strong {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--neon-green);
+    font-family: var(--f-pixel);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+}
+.verification-stamp-mark {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+}
+.verification-stamp-mark circle,
+.verification-stamp-mark path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .gate-switch {
     font-family: var(--f-mono);
     font-size: 11px;
@@ -674,11 +712,17 @@ a.gate-btn {
     cursor: pointer;
     max-width: 380px;
     width: 90%;
+    min-height: 44px;
+    padding: 8px 0;
 }
 .terms-check-label input[type="checkbox"] {
     accent-color: var(--neon-pink);
-    width: 14px; height: 14px;
+    width: 18px; height: 18px;
     flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .verification-stamp { opacity: 1; transform: none; }
 }
 
 /* ── AVATAR PICKER (register) ───────────────────────────────── */

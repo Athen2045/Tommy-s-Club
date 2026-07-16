@@ -27,7 +27,7 @@ And No, My name is not Tommy as you can see. It’s just a name for the project 
 | Languages | JavaScript, HTML, CSS, SQL |
 | Database and auth | Supabase, PostgreSQL, Supabase Auth |
 | Realtime | Supabase Postgres Changes and a server-side WebSocket relay |
-| Media | ImageKit, Multer |
+| Media | Direct ImageKit uploads, transformed delivery, and Multer fallback |
 | Writing UI | Quill |
 | Motion | Anime.js and CSS animations |
 | Icons | Bootstrap Icons |
@@ -51,7 +51,7 @@ These are references and learning influences, not a claim that the project repro
 
 ### Prerequisites
 
-- Node.js 20 or newer.
+- Node.js 22.
 - A Supabase project with the application tables, authentication, RLS, and deny-direct-client policies configured.
 - An ImageKit account and URL endpoint for profile, post, and chat images.
 - Git, if you plan to contribute.
@@ -90,6 +90,7 @@ Important variables:
 | `SUPABASE_ANON_KEY` | Public Supabase key for compatibility/configuration |
 | `SUPABASE_SERVICE_KEY` | Server-only service-role key; never expose it to the browser |
 | `SESSION_SECRET` | Random session secret of at least 32 characters in production |
+| `APP_URL` | Canonical application URL, such as `http://localhost:8080` locally or `https://tommysclub.vercel.app` in production |
 | `IMAGEKIT_PUBLIC_KEY` | ImageKit public key |
 | `IMAGEKIT_PRIVATE_KEY` | Server-only ImageKit private key |
 | `IMAGEKIT_URL_ENDPOINT` | ImageKit delivery endpoint |
@@ -99,9 +100,29 @@ Important variables:
 
 Do not commit `.env`. The repository includes `.env.example` as the safe template.
 
-### Apply the chat image migration
+### Apply the database migrations
 
-Before testing chat image attachments, run [`20260715-chat-message-images.sql`](./20260715-chat-message-images.sql) in the Supabase SQL Editor. The migration adds optional image fields, keeps `messages.body` safe, and includes verification queries for constraints, RLS, and policies.
+Run these files in order in the Supabase SQL Editor:
+
+1. [`20260715-chat-message-images.sql`](./20260715-chat-message-images.sql) adds optional chat image fields and content constraints.
+2. [`20260716-platform-hardening.sql`](./20260716-platform-hardening.sql) adds persistent sessions, distributed rate limits, one-time realtime credentials, media identifiers, indexes, and verification queries.
+
+The second migration is required before deploying this version to Vercel. Its internal tables deny `anon` and `authenticated` access and are used only through the server-side service role.
+
+### Configure Supabase email confirmation
+
+In **Authentication → URL Configuration**, set the production Site URL to `https://tommysclub.vercel.app`. Allow these exact redirects:
+
+- `https://tommysclub.vercel.app/auth/confirm`
+- `http://localhost:8080/auth/confirm`
+
+In the **Confirm signup** email template, use:
+
+```html
+<a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email">Click to verify</a>
+```
+
+This returns users to the Tommy’s Club login screen without leaving Supabase access or refresh tokens in the final URL.
 
 The application expects the server-side service key architecture: browser clients are denied direct access to application tables, while the Express server performs authorized database operations. Do not replace that setup with a public service key or client-side service-role access.
 
@@ -163,6 +184,18 @@ To work from your own fork:
 
 Small experiments, bug reports, design thoughts, documentation fixes, and code are all useful contributions. If a change is large, opening an issue first makes it easier to compare ideas before implementation.
 
+Use [`ISSUES.md`](./ISSUES.md) as the shared fix-and-improvement checklist. For a new report, use the repository’s bug or feature issue template. Never include credentials, session links, private email addresses, or other personal data in an issue.
+
+## Deploy to Vercel
+
+- Connect Vercel to `Athen2045/Tommy-s-Club`, not the older `Blog-Post-main` repository.
+- Select Node.js 22 and add every variable from `.env.example` with production values.
+- Set `APP_URL=https://tommysclub.vercel.app` and `NODE_ENV=production`. `deployment` is not a valid `NODE_ENV` value for this project.
+- Apply both SQL migrations before deploying. Production sessions and rate limits intentionally do not fall back to process memory.
+- Changing `SESSION_SECRET` signs out existing sessions. Do not restore an old or exposed secret.
+- Uploads go directly from the browser to ImageKit, avoiding Vercel’s function body limit. The server verifies the resulting file before attaching it to content.
+- Chat prefers the WebSocket relay and automatically falls back to authenticated incremental polling after repeated connection failures.
+
 ## Project structure
 
 ```text
@@ -170,8 +203,10 @@ Tommy's Club/
 ├── server.js                         # Express routes, middleware, and WebSocket relay
 ├── auth-service.js                    # Supabase Auth operations
 ├── blog-service.js                    # Posts, comments, reactions, profiles, chat, and categories
+├── platform-store.js                  # Persistent sessions, rate limits, and realtime credentials
 ├── 20260715-chat-message-images.sql   # Chat image schema migration and verification queries
-├── username-uniqueness.sql            # Username constraint/query support
+├── 20260716-platform-hardening.sql     # Vercel/Supabase hardening migration
+├── ISSUES.md                           # Contributor fix and improvement checklist
 ├── public/
 │   ├── assets/                        # Project-owned image assets
 │   ├── css/
@@ -181,6 +216,7 @@ Tommy's Club/
 │       ├── chat.js                     # Realtime chat and image attachments
 │       ├── entry-transition.js         # Login-to-application transition
 │       ├── forms.js                    # Shared form behavior
+│       ├── media-upload.js              # Direct authenticated ImageKit uploads
 │       └── motion.js                   # Small application motion enhancements
 ├── views/                             # Handlebars pages and layouts
 ├── .env.example                       # Safe environment variable template
@@ -197,14 +233,15 @@ Tommy's Club/
 - Supabase application tables use RLS and deny direct browser access.
 - `SUPABASE_SERVICE_KEY` and `IMAGEKIT_PRIVATE_KEY` stay server-side.
 - Post and chat content is validated and sanitized before display.
-- Uploads are restricted to supported image MIME types and an 8 MB limit.
+- Browser uploads are restricted to supported image MIME types and an 8 MB limit, then verified against ImageKit server-side.
 - Ownership checks protect destructive post, comment, message, and account operations.
-- The WebSocket relay keeps Supabase credentials away from the browser.
+- Persistent sessions, distributed rate limits, and hashed one-time WebSocket credentials survive Vercel function changes.
+- The WebSocket relay keeps Supabase service credentials away from the browser and has an authenticated polling fallback.
 - Run `npm audit` before deploying and review any remaining transitive advisories.
 
 ## Current limitations
 
-Tommy’s Club is still experimental. It currently uses a manual Supabase SQL workflow, a single Express server, and a small server-side WebSocket relay. There is no promise of production-scale capacity, polished moderation tooling, or a stable public API yet. Expect the structure and design to change as the experiments continue.
+Tommy’s Club is still experimental. It uses a manual Supabase SQL workflow, Vercel’s evolving WebSocket support, and external media storage. There is no promise of production-scale capacity, polished moderation tooling, or a stable public API yet. Expect the structure and design to change as the experiments continue.
 
 ## License
 

@@ -1,16 +1,28 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
+const authOptions = {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+    }
+};
+
+const APP_URL = (process.env.APP_URL || 'http://localhost:8080').replace(/\/$/, '');
+
 // Anon key for auth operations
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
+    process.env.SUPABASE_ANON_KEY,
+    authOptions
 );
 
 // Service key to read profiles server-side
 const supabaseAdmin = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
+    process.env.SUPABASE_SERVICE_KEY,
+    authOptions
 );
 
 const DEFAULT_AVATARS = Object.freeze({
@@ -38,7 +50,10 @@ module.exports.registerUser = async function (userData) {
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username } }
+        options: {
+            data: { username },
+            emailRedirectTo: `${APP_URL}/auth/confirm`
+        }
     });
 
     if (error) {
@@ -57,6 +72,19 @@ module.exports.registerUser = async function (userData) {
     }
 
     return data;
+};
+
+module.exports.verifyEmailToken = async function (tokenHash) {
+    if (typeof tokenHash !== 'string' || tokenHash.length < 20 || tokenHash.length > 512) {
+        throw new Error('invalid verification link');
+    }
+    const client = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY,
+        authOptions
+    );
+    const { error } = await client.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+    if (error) throw new Error('invalid verification link');
 };
 
 module.exports.loginUser = async function (email, password) {
@@ -105,7 +133,7 @@ module.exports.deleteUserAccount = async function (userId) {
 };
 
 async function authenticatedClient(email, password) {
-    const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+    const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, authOptions);
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) throw new Error('Current password is incorrect');
     return client;

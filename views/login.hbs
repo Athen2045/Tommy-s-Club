@@ -32,7 +32,17 @@
     {{#if errorMessage}}
     <p class="gate-error">{{errorMessage}}</p>
     {{/if}}
-    {{#if successMessage}}
+    {{#if verificationSuccess}}
+    <div class="verification-stamp" data-verification-stamp role="status" aria-live="polite">
+        <span class="verification-stamp-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="32" height="32" focusable="false">
+                <circle cx="16" cy="16" r="14"></circle>
+                <path d="m9.5 16.5 4.2 4.1 8.9-9.2"></path>
+            </svg>
+        </span>
+        <span><strong>EMAIL VERIFIED</strong>{{successMessage}}</span>
+    </div>
+    {{else if successMessage}}
     <p class="gate-success">{{successMessage}}</p>
     {{/if}}
 

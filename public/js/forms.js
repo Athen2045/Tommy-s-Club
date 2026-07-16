@@ -27,6 +27,11 @@
     function enhanceForms() {
         document.querySelectorAll('form').forEach(function (form) {
             form.addEventListener('submit', function (event) {
+                var confirmation = form.dataset.confirm;
+                if (confirmation && !window.confirm(confirmation)) {
+                    event.preventDefault();
+                    return;
+                }
                 if (!form.checkValidity()) return;
                 var submit = event.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
                 if (!submit) return;
@@ -54,9 +59,46 @@
         });
     }
 
+    function enhanceTermsAgreement() {
+        var checkbox = document.getElementById('agreedBox');
+        var submit = document.getElementById('termsBtn');
+        if (!checkbox || !submit) return;
+
+        function syncAgreement() {
+            submit.disabled = !checkbox.checked;
+            submit.setAttribute('aria-disabled', String(!checkbox.checked));
+        }
+
+        checkbox.addEventListener('change', syncAgreement);
+        syncAgreement();
+    }
+
+    function animateVerificationStamp() {
+        var stamp = document.querySelector('[data-verification-stamp]');
+        if (!stamp) return;
+        document.body.classList.add('intro-skipped');
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+            !window.anime || typeof window.anime.animate !== 'function') {
+            stamp.classList.add('is-visible');
+            return;
+        }
+
+        stamp.classList.add('is-visible');
+        window.anime.animate(stamp, {
+            opacity: [0, 1],
+            y: [-8, 0],
+            scale: [0.96, 1],
+            duration: 320,
+            ease: 'out(4)'
+        });
+    }
+
     function initialise() {
         enhancePasswords();
         enhanceForms();
+        enhanceTermsAgreement();
+        animateVerificationStamp();
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialise);

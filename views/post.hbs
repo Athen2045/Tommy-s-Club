@@ -94,7 +94,7 @@
                     {{#equal ../session.user.id author_id}}
                     <form method="POST" action="/comments/delete/{{id}}"
                         style="display:inline"
-                        onsubmit="return confirm('Delete this comment?')">
+                        data-confirm="Delete this comment?">
                         <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <input type="hidden" name="postId" value="{{../post.id}}">
                         <button type="submit" class="comment-delete-link"
@@ -140,7 +140,7 @@
                             {{#equal ../../session.user.id author_id}}
                             <form method="POST" action="/comments/delete/{{id}}"
                                 style="display:inline"
-                                onsubmit="return confirm('Delete this reply?')">
+                                data-confirm="Delete this reply?">
                                 <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                                 <input type="hidden" name="postId" value="{{../../post.id}}">
                                 <button type="submit" class="comment-delete-link"

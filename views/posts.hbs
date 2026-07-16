@@ -70,7 +70,7 @@
                     <a href="/blog/{{id}}" class="btn-edit" title="View">View</a>
                     <form method="POST" action="/posts/delete/{{id}}"
                         style="display:inline;margin-left:6px"
-                        onsubmit="return confirm('Delete «{{title}}»?')">
+                        data-confirm="Delete this post?">
                         <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
                         <button type="submit" class="btn-delete" title="Delete">Del</button>
                     </form>
