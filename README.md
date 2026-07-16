@@ -106,6 +106,7 @@ Run these files in order in the Supabase SQL Editor:
 
 1. [`20260715-chat-message-images.sql`](./20260715-chat-message-images.sql) adds optional chat image fields and content constraints.
 2. [`20260716-platform-hardening.sql`](./20260716-platform-hardening.sql) adds persistent sessions, distributed rate limits, one-time realtime credentials, media identifiers, indexes, and verification queries.
+3. [`20260716-rate-limit-function-fix.sql`](./20260716-rate-limit-function-fix.sql) repairs the production rate-limit function used by login and registration. It is safe to run after the hardening migration and is required if you previously ran an older copy of that migration.
 
 The second migration is required before deploying this version to Vercel. Its internal tables deny `anon` and `authenticated` access and are used only through the server-side service role.
 
@@ -206,6 +207,7 @@ Tommy's Club/
 ├── platform-store.js                  # Persistent sessions, rate limits, and realtime credentials
 ├── 20260715-chat-message-images.sql   # Chat image schema migration and verification queries
 ├── 20260716-platform-hardening.sql     # Vercel/Supabase hardening migration
+├── 20260716-rate-limit-function-fix.sql # Production rate-limit function repair
 ├── ISSUES.md                           # Contributor fix and improvement checklist
 ├── public/
 │   ├── assets/                        # Project-owned image assets

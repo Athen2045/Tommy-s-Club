@@ -1135,6 +1135,39 @@ app.get('/chat/ws-token', ensureLogin, wsTokenLimiter, async (req, res) => {
     }
 });
 
+// Infrastructure middleware (sessions and distributed rate limits) runs before
+// route handlers. Convert a temporary store failure into a useful response
+// instead of exposing Express/Vercel's generic Internal Server Error page.
+app.use((err, req, res, _next) => {
+    const requestId = crypto.randomUUID();
+    console.error('Request middleware failed', {
+        requestId,
+        method: req.method,
+        path: req.path,
+        error: err?.message || 'Unknown middleware error'
+    });
+
+    res.set('Cache-Control', 'private, no-store');
+    if (req.path === '/register') {
+        return res.status(503).render('register', {
+            ...GATE,
+            errorMessage: 'Registration is temporarily unavailable. Please try again in a moment.',
+            username: req.body?.username,
+            email: req.body?.email
+        });
+    }
+    if (req.path === '/login') {
+        return res.status(503).render('login', {
+            ...GATE,
+            errorMessage: 'Sign in is temporarily unavailable. Please try again in a moment.'
+        });
+    }
+    if (req.accepts('json') && !req.accepts('html')) {
+        return res.status(503).json({ error: 'The service is temporarily unavailable. Please try again.' });
+    }
+    return res.status(503).send('The service is temporarily unavailable. Please try again.');
+});
+
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => res.status(404).render('404'));
 

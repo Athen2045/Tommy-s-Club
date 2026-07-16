@@ -131,7 +131,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-    current_time timestamptz := clock_timestamp();
+    v_now timestamptz := clock_timestamp();
 begin
     if p_key is null or char_length(p_key) > 512 or p_window_ms < 1000 then
         raise exception 'invalid rate-limit input';
@@ -139,16 +139,21 @@ begin
 
     return query
     insert into public.rate_limit_buckets as bucket (key, hits, reset_at, updated_at)
-    values (p_key, 1, current_time + make_interval(secs => p_window_ms::double precision / 1000.0), current_time)
+    values (
+        p_key,
+        1,
+        v_now + (p_window_ms * interval '1 millisecond'),
+        v_now
+    )
     on conflict (key) do update
-    set hits = case when bucket.reset_at <= current_time then 1 else bucket.hits + 1 end,
+    set hits = case when bucket.reset_at <= v_now then 1 else bucket.hits + 1 end,
         reset_at = case
-            when bucket.reset_at <= current_time
-            then current_time + make_interval(secs => p_window_ms::double precision / 1000.0)
+            when bucket.reset_at <= v_now
+            then v_now + (p_window_ms * interval '1 millisecond')
             else bucket.reset_at
         end,
-        updated_at = current_time
-    returning rate_limit_buckets.hits, rate_limit_buckets.reset_at;
+        updated_at = v_now
+    returning bucket.hits, bucket.reset_at;
 end
 $$;
 
