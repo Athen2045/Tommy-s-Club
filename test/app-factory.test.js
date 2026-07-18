@@ -7,9 +7,27 @@ process.env.NODE_ENV = 'development';
 process.env.APP_URL = 'http://localhost:8080';
 process.env.SESSION_SECRET = 'test-session-secret-that-is-long-enough';
 
+const credentialNames = [
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_KEY',
+    'IMAGEKIT_PUBLIC_KEY',
+    'IMAGEKIT_PRIVATE_KEY',
+    'IMAGEKIT_URL_ENDPOINT'
+];
+const originalCredentials = Object.fromEntries(
+    credentialNames.map(name => [name, process.env[name]])
+);
+for (const name of credentialNames) process.env[name] = '';
+
 const { createApp } = require('../server');
 
-test('createApp accepts injected adapters and exposes the new HTTP interfaces', () => {
+for (const name of credentialNames) {
+    if (originalCredentials[name] === undefined) delete process.env[name];
+    else process.env[name] = originalCredentials[name];
+}
+
+test('createApp imports without credentials and accepts injected adapters', () => {
     const app = createApp({
         blogService: {},
         authService: {},

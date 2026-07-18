@@ -18,8 +18,6 @@ const {
     SupabaseRuntimeState
 } = require('./platform-store');
 
-const defaultBlogService = require('./blog-service');
-const defaultAuthService = require('./auth-service');
 const { createMediaService, ALLOWED_IMAGE_MIME, MAX_IMAGE_BYTES } = require('./media-service');
 
 const PORT = process.env.PORT || 8080;
@@ -55,8 +53,10 @@ function createApp(dependencies = {}) {
 const app = express();
 if (isProd) app.set('trust proxy', 1);
 
-const blogService = dependencies.blogService || defaultBlogService;
-const authService = dependencies.authService || defaultAuthService;
+// Resolve environment-backed services only when they are actually needed.
+// Tests can inject adapters without requiring Supabase credentials at import time.
+const blogService = dependencies.blogService || require('./blog-service');
+const authService = dependencies.authService || require('./auth-service');
 const platformClient = dependencies.platformClient || createServerClient();
 const runtimeState = dependencies.runtimeState || new SupabaseRuntimeState(platformClient);
 
@@ -1366,6 +1366,18 @@ return {
 };
 }
 
+const shouldStartRuntime = require.main === module || Boolean(process.env.VERCEL);
+
+function validateRuntimeEnvironment() {
+    const required = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_KEY'];
+    const missing = required.filter(name => !process.env[name]?.trim());
+    if (missing.length) {
+        throw new Error(`Missing required runtime environment variables: ${missing.join(', ')}`);
+    }
+}
+
+function createHttpRuntime() {
+validateRuntimeEnvironment();
 const runtime = createApp();
 const {
     app,
@@ -1379,8 +1391,7 @@ const {
 const httpServer = http.createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: '/chat/ws' });
 
-// Server-side Supabase client for the realtime subscription
-// (anon key never sent to browser)
+// Server-side Supabase client for the realtime subscription.
 const sbRelay = createServerClient();
 
 let realtimeRelayStarted = false;
@@ -1440,9 +1451,7 @@ wss.on('connection', async (ws, req) => {
 });
 
 // ── Start ─────────────────────────────────────────────────
-const shouldStartRuntime = require.main === module || Boolean(process.env.VERCEL);
-const ready = shouldStartRuntime
-    ? blogService.initialize()
+const ready = blogService.initialize()
         .then(authService.initialize)
         .then(() => {
             startRealtimeRelay();
@@ -1452,9 +1461,14 @@ const ready = shouldStartRuntime
                 );
             }
         })
-        .catch(err => console.error('Failed to start:', err))
-    : Promise.resolve();
+        .catch(err => console.error('Failed to start:', err));
 
-module.exports = httpServer;
-module.exports.ready = ready;
+return { httpServer, ready };
+}
+
+const runtimeExport = shouldStartRuntime ? createHttpRuntime() : null;
+const exportedServer = runtimeExport?.httpServer || {};
+
+module.exports = exportedServer;
+module.exports.ready = runtimeExport?.ready || Promise.resolve();
 module.exports.createApp = (dependencies = {}) => createApp(dependencies).app;
