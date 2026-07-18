@@ -75,6 +75,8 @@ cd Tommy-s-Club
 npm install
 ```
 
+For a reproducible install from the committed lockfile, use `npm ci` instead. GitHub Actions uses `npm ci` automatically.
+
 ### Configure the environment
 
 Copy the example file and fill in your own values:
@@ -146,6 +148,24 @@ npm test
 ```
 
 Open <http://localhost:8080> unless you chose another `PORT`.
+
+## GitHub Actions and checks
+
+Tommy’s Club runs GitHub Actions checks for pushes to `master` and pull requests targeting `master`.
+
+The CI workflow uses Node.js 22, installs the committed dependency lockfile with `npm ci`, then runs the same checks used locally:
+
+```bash
+npm ci
+npm run check
+npm test
+```
+
+Pull requests that change `package.json` or `package-lock.json` also receive a dependency review. High-severity or critical vulnerabilities introduced by a dependency change fail that review.
+
+These workflows are validation-only. They do not start the application, access Supabase or ImageKit, use Vercel credentials, run SQL migrations, or require production secrets. See the [GitHub Actions workflow specification](./spec/spec-process-cicd-github-actions.md) for maintainer requirements.
+
+CodeQL analysis and Dependabot update pull requests are planned follow-up improvements after the initial CI and dependency-review workflows have proven stable.
 
 ## Fork and contribute
 
