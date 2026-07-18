@@ -27,6 +27,7 @@
                     <div class="chat-msg-content">
                         <div class="chat-msg-meta">
                             <a href="/member/{{profiles.username}}" class="chat-msg-author">{{profiles.username}}</a>
+                            {{#if profiles.isAdmin}}<img class="admin-verified-badge" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
                             <time class="chat-msg-time" data-ts="{{created_at}}"></time>
                         </div>
                         {{#if body}}<div class="chat-msg-body" data-raw="{{body}}"></div>{{/if}}
@@ -36,9 +37,9 @@
                         </a>
                         {{/if}}
                     </div>
-                    <button class="chat-delete-btn" data-msgid="{{id}}" title="Delete message" aria-label="Delete message" type="button">
+                    {{#if canDelete}}<button class="chat-delete-btn" data-msgid="{{id}}" title="Delete message" aria-label="Delete message" type="button">
                         <i class="bi bi-trash" aria-hidden="true"></i>
-                    </button>
+                    </button>{{/if}}
                 </article>
                 {{/each}}
             </div>

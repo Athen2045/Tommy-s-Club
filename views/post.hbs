@@ -1,219 +1,221 @@
-<div class="post-view">
+{{#*inline "commentNode"}}
+<li class="comment-thread-item" id="comment-{{id}}">
+    <article class="comment-item">
+        <div class="meta-avatar">
+            {{#if profiles.avatar_url}}
+            <img src="{{profiles.avatar_url}}" alt="" loading="lazy">
+            {{else}}
+            <span class="meta-avatar-initials">{{avatarInitial profiles.username}}</span>
+            {{/if}}
+        </div>
+        <div class="comment-content">
+            <header class="comment-meta">
+                <a href="/member/{{profiles.username}}" class="comment-author">{{profiles.username}}</a>
+                {{#if profiles.isAdmin}}<img class="admin-verified-badge" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
+                <a href="#comment-{{id}}" class="comment-date">{{timeAgo created_at}}</a>
+            </header>
+            {{#if body}}<p class="comment-body">{{body}}</p>{{/if}}
+            {{#if image_url}}
+            <a class="comment-image-link" href="{{mediaUrl image_url "post"}}" target="_blank" rel="noopener">
+                <img class="comment-image" src="{{mediaUrl image_url "comment"}}" alt="Image shared by {{profiles.username}}" loading="lazy" width="520" height="480">
+            </a>
+            {{/if}}
+            <div class="comment-actions">
+                {{#if @root.session.user}}
+                <button type="button" class="reply-toggle" data-reply-trigger="{{id}}" aria-controls="reply-form-{{id}}" aria-expanded="false">
+                    <i class="bi bi-reply" aria-hidden="true"></i> Reply
+                </button>
+                {{/if}}
+                {{#if canDelete}}
+                <form method="POST" action="/comments/delete/{{id}}" data-confirm="Delete this comment?">
+                    <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+                    <input type="hidden" name="postId" value="{{@root.post.id}}">
+                    <button type="submit" class="comment-delete-link">Delete</button>
+                </form>
+                {{/if}}
+            </div>
 
-    <!-- Back link -->
+            {{#if @root.session.user}}
+            <div class="reply-form" id="reply-form-{{id}}" data-reply-form hidden>
+                <form method="POST" action="/blog/{{@root.post.id}}/comments" data-comment-composer>
+                    <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+                    <input type="hidden" name="parent_id" value="{{id}}">
+                    <input type="hidden" id="replyImageUrl-{{id}}">
+                    <input type="hidden" name="image_file_id" id="replyImageFileId-{{id}}">
+                    <label class="comment-field-label" for="reply-{{id}}">Reply to {{profiles.username}}</label>
+                    <textarea id="reply-{{id}}" name="body" class="comment-textarea" rows="2" maxlength="2000" placeholder="Write a reply…"></textarea>
+                    <div class="comment-image-preview" data-comment-image-preview hidden>
+                        <img src="" alt="Selected reply image preview">
+                        <button type="button" data-comment-image-remove>Remove image</button>
+                    </div>
+                    <div class="reply-form-actions">
+                        <label class="comment-image-picker" for="replyImage-{{id}}"><i class="bi bi-image" aria-hidden="true"></i><span>Add image</span></label>
+                        <input class="sr-only" type="file" id="replyImage-{{id}}"
+                            accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
+                            data-comment-image-input data-media-kind="comment"
+                            data-media-url-field="#replyImageUrl-{{id}}" data-media-id-field="#replyImageFileId-{{id}}"
+                            data-media-feedback="#replyImageFeedback-{{id}}">
+                        <span class="form-upload-feedback" id="replyImageFeedback-{{id}}" aria-live="polite"></span>
+                        <button type="button" class="cancel-reply" data-reply-cancel="{{id}}">Cancel</button>
+                        <button type="submit" class="comment-submit-btn">Reply</button>
+                    </div>
+                </form>
+            </div>
+            {{/if}}
+        </div>
+    </article>
+
+    {{#if children.length}}
+    <ol class="comment-children">
+        {{#each children}}{{> commentNode}}{{/each}}
+    </ol>
+    {{/if}}
+</li>
+{{/inline}}
+
+<article class="post-view">
     <a href="/blog" class="post-view-back">&#x2190; Back to the stories</a>
 
-    <!-- Category -->
-    {{#if post.categories}}
-    <div class="post-view-cat">{{post.categories.name}}</div>
-    {{/if}}
+    <div class="post-view-flags">
+        {{#if post.isPinned}}<span class="post-card-pin"><i class="bi bi-pin-angle-fill" aria-hidden="true"></i> Pinned</span>{{/if}}
+        {{#if post.categories}}<span class="post-view-cat">{{post.categories.name}}</span>{{/if}}
+    </div>
 
-    <!-- Title -->
     <h1 class="post-view-title">{{post.title}}</h1>
 
-    <!-- Meta -->
     <div class="post-view-meta">
-        <a href="/member/{{post.profiles.username}}">{{post.profiles.username}}</a>
+        <a href="/member/{{post.profiles.username}}" class="post-author">
+            <span>{{post.profiles.username}}</span>
+            {{#if post.profiles.isAdmin}}<img class="admin-verified-badge" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
+        </a>
         <span class="sep">&middot;</span>
         <span>{{formatDate post.created_at}}</span>
         <span class="sep">&middot;</span>
         <span>{{readTime post.body}}</span>
         <span class="sep">&middot;</span>
-        <span>{{commentCount}} comment{{#gt commentCount 1}}s{{/gt}}</span>
+        <a href="#comments">{{commentCount}} {{pluralize commentCount "comment" "comments"}}</a>
     </div>
 
-    <!-- Feature image -->
+    {{#if post.post_images.length}}
+    <section class="post-gallery" data-carousel aria-roledescription="carousel" aria-label="Story gallery">
+        <div class="post-gallery-viewport" data-carousel-viewport tabindex="0">
+            <div class="post-gallery-track" data-carousel-track>
+                {{#each post.post_images}}
+                <figure class="post-gallery-slide" data-carousel-slide>
+                    {{#if image_url}}
+                    <img src="{{mediaUrl image_url "post"}}" alt="{{#if alt_text}}{{alt_text}}{{else}}{{../post.title}}{{/if}}" {{#if @first}}loading="eager" fetchpriority="high"{{else}}loading="lazy"{{/if}} width="1600" height="1200">
+                    {{else}}
+                    {{#if url}}
+                    <img src="{{mediaUrl url "post"}}" alt="{{#if alt_text}}{{alt_text}}{{else}}{{../post.title}}{{/if}}" {{#if @first}}loading="eager" fetchpriority="high"{{else}}loading="lazy"{{/if}} width="1600" height="1200">
+                    {{else}}
+                    <img src="{{mediaUrl this "post"}}" alt="{{../post.title}}" {{#if @first}}loading="eager" fetchpriority="high"{{else}}loading="lazy"{{/if}} width="1600" height="1200">
+                    {{/if}}
+                    {{/if}}
+                    {{#if caption}}<figcaption>{{caption}}</figcaption>{{/if}}
+                </figure>
+                {{/each}}
+            </div>
+        </div>
+        {{#hasMultiple post.post_images.length}}
+        <div class="post-gallery-controls">
+            <button type="button" data-carousel-prev aria-label="Previous image"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>
+            <span data-carousel-status aria-live="polite">1 / {{post.post_images.length}}</span>
+            <button type="button" data-carousel-next aria-label="Next image"><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </div>
+        <div class="post-gallery-thumbnails" aria-label="Choose gallery image">
+            {{#each post.post_images}}
+            <button type="button" data-carousel-thumb data-carousel-index="{{@index}}" aria-label="Show image {{inc @index}}">
+                <img src="{{mediaUrl image_url "feed"}}" alt="" loading="lazy" width="72" height="54">
+            </button>
+            {{/each}}
+        </div>
+        {{/hasMultiple}}
+    </section>
+    {{else}}
     {{#if post.feature_image}}
     <img src="{{mediaUrl post.feature_image "post"}}" alt="{{post.title}}" class="post-view-img" loading="eager" fetchpriority="high" width="1600" height="1200">
     {{/if}}
+    {{/if}}
 
-    <!-- Body -->
-    <div class="post-view-body">
-        {{{safeHTML post.body}}}
-    </div>
+    <div class="post-view-body">{{{safeHTML post.body}}}</div>
+    <div class="reaction-bar" id="reactionBar" data-post-id="{{post.id}}" aria-label="Reactions"></div>
+</article>
 
-    <!-- Reactions -->
-    <div class="reaction-bar" id="reactionBar" data-post-id="{{post.id}}"></div>
+<section class="comments-section" id="comments" aria-labelledby="commentsHeading">
+    <h2 class="comments-heading" id="commentsHeading">
+        <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+        {{commentCount}} {{pluralize commentCount "comment" "comments"}}
+    </h2>
 
-</div>
-
-<!-- Comments -->
-<section class="comments-section" id="comments" style="max-width:700px">
-
-    <h3 class="comments-heading">
-        <i class="bi bi-chat-square-text" aria-hidden="true"></i> {{commentCount}} Comment{{#gt commentCount 1}}s{{/gt}}
-    </h3>
-
-    <!-- New comment form -->
     {{#if session.user}}
+    {{#if commentError}}<div class="gate-error comment-inline-error" role="alert" tabindex="-1">{{commentError}}</div>{{/if}}
     <div class="comment-form-card">
         <div class="meta-avatar">
-            {{#if session.user.avatar_url}}
-            <img src="{{session.user.avatar_url}}" alt="you">
-            {{else}}
-            <span class="meta-avatar-initials">{{avatarInitial session.user.username}}</span>
-            {{/if}}
+            {{#if session.user.avatar_url}}<img src="{{session.user.avatar_url}}" alt="">{{else}}<span class="meta-avatar-initials">{{avatarInitial session.user.username}}</span>{{/if}}
         </div>
-        <form method="POST" action="/blog/{{post.id}}/comments" style="flex:1">
+        <form method="POST" action="/blog/{{post.id}}/comments" class="comment-composer" data-comment-composer>
             <input type="hidden" name="_csrf" value="{{csrfToken}}">
-            <textarea name="body" class="comment-textarea" rows="3"
-                placeholder="Share your thoughts…" required></textarea>
-            <div style="display:flex;justify-content:flex-end;margin-top:6px">
+            <input type="hidden" name="image_url" id="commentImageUrl">
+            <input type="hidden" name="image_file_id" id="commentImageFileId">
+            <label class="comment-field-label" for="newComment">Your comment</label>
+            <textarea id="newComment" name="body" class="comment-textarea" rows="3" maxlength="2000" placeholder="Share your thoughts…"></textarea>
+            <div class="comment-image-preview" data-comment-image-preview hidden>
+                <img src="" alt="Selected comment image preview">
+                <button type="button" data-comment-image-remove>Remove image</button>
+            </div>
+            <div class="comment-composer-actions">
+                <label class="comment-image-picker" for="commentImage">
+                    <i class="bi bi-image" aria-hidden="true"></i><span>Add image</span>
+                </label>
+                <input class="sr-only" type="file" id="commentImage"
+                    accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
+                    data-comment-image-input data-media-kind="comment"
+                    data-media-url-field="#commentImageUrl" data-media-id-field="#commentImageFileId"
+                    data-media-feedback="#commentImageFeedback">
+                <span class="form-upload-feedback" id="commentImageFeedback" aria-live="polite"></span>
                 <button type="submit" class="comment-submit-btn">&#x25B8; Post comment</button>
             </div>
         </form>
     </div>
     {{else}}
-    <div class="comment-cta">
-        <a href="/login">Sign in</a> or <a href="/register">create an account</a> to join the conversation.
-    </div>
+    <div class="comment-cta"><a href="/login">Sign in</a> or <a href="/register">create an account</a> to join the conversation.</div>
     {{/if}}
 
-    <!-- Comment thread -->
-    {{#if commentTree}}
-    <div class="comment-list">
-        {{#each commentTree}}
-        <div class="comment-item" id="comment-{{id}}">
-            <div class="meta-avatar">
-                {{#if profiles.avatar_url}}
-                <img src="{{profiles.avatar_url}}" alt="" loading="lazy">
-                {{else}}
-                <span class="meta-avatar-initials">{{avatarInitial profiles.username}}</span>
-                {{/if}}
-            </div>
-            <div style="flex:1">
-                <div class="comment-meta">
-                    <a href="/member/{{profiles.username}}" class="comment-author">{{profiles.username}}</a>
-                    <span class="comment-date">{{timeAgo created_at}}</span>
-                </div>
-                <p class="comment-body">{{body}}</p>
-                <div class="comment-actions">
-                    {{#if ../session.user}}
-                    <button class="reply-toggle" data-id="{{id}}">&#x21B5; Reply</button>
-                    {{/if}}
-                    {{#equal ../session.user.id author_id}}
-                    <form method="POST" action="/comments/delete/{{id}}"
-                        style="display:inline"
-                        data-confirm="Delete this comment?">
-                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
-                        <input type="hidden" name="postId" value="{{../post.id}}">
-                        <button type="submit" class="comment-delete-link"
-                            style="background:none;border:none;padding:0;cursor:pointer">Delete</button>
-                    </form>
-                    {{/equal}}
-                </div>
-
-                <!-- Reply form (hidden by default) -->
-                {{#if ../session.user}}
-                <div class="reply-form" id="reply-form-{{id}}" style="display:none">
-                    <form method="POST" action="/blog/{{../post.id}}/comments">
-                        <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
-                        <input type="hidden" name="parent_id" value="{{id}}">
-                        <textarea name="body" class="comment-textarea" rows="2"
-                            placeholder="Write a reply…" required></textarea>
-                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
-                            <button type="button" class="cancel-reply" data-id="{{id}}">Cancel</button>
-                            <button type="submit" class="comment-submit-btn">Reply</button>
-                        </div>
-                    </form>
-                </div>
-                {{/if}}
-
-                <!-- Nested replies -->
-                {{#if replies}}
-                <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
-                    {{#each replies}}
-                    <div class="comment-item reply-item" id="comment-{{id}}">
-                        <div class="meta-avatar-xs">
-                            {{#if profiles.avatar_url}}
-                            <img src="{{profiles.avatar_url}}" alt="" loading="lazy">
-                            {{else}}
-                            <span class="meta-avatar-initials-xs">{{avatarInitial profiles.username}}</span>
-                            {{/if}}
-                        </div>
-                        <div style="flex:1">
-                            <div class="comment-meta">
-                                <a href="/member/{{profiles.username}}" class="comment-author">{{profiles.username}}</a>
-                                <span class="comment-date">{{timeAgo created_at}}</span>
-                            </div>
-                            <p class="comment-body">{{body}}</p>
-                            {{#equal ../../session.user.id author_id}}
-                            <form method="POST" action="/comments/delete/{{id}}"
-                                style="display:inline"
-                                data-confirm="Delete this reply?">
-                                <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
-                                <input type="hidden" name="postId" value="{{../../post.id}}">
-                                <button type="submit" class="comment-delete-link"
-                                    style="background:none;border:none;padding:0;cursor:pointer">Delete</button>
-                            </form>
-                            {{/equal}}
-                        </div>
-                    </div>
-                    {{/each}}
-                </div>
-                {{/if}}
-            </div>
-        </div>
-        {{/each}}
-    </div>
+    {{#if commentTree.length}}
+    <ol class="comment-list" aria-label="Comment thread">
+        {{#each commentTree}}{{> commentNode}}{{/each}}
+    </ol>
     {{else}}
-    <div class="empty-state" style="padding:20px 0">
-        <i class="bi bi-chat"></i>
-        <p>No comments yet. Be the first!</p>
+    <div class="empty-state comments-empty">
+        <i class="bi bi-chat" aria-hidden="true"></i>
+        <p>No comments yet. Be the first.</p>
     </div>
     {{/if}}
-
 </section>
 
 <script>
-document.querySelectorAll('.reply-toggle').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        var form = document.getElementById('reply-form-' + btn.dataset.id);
-        if (form) {
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            if (form.style.display === 'block') form.querySelector('textarea').focus();
-        }
-    });
-});
-document.querySelectorAll('.cancel-reply').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-        var form = document.getElementById('reply-form-' + btn.dataset.id);
-        if (form) form.style.display = 'none';
-    });
-});
-</script>
-
-<script>
 (function () {
-    var KEYS  = ['fire','heart','eye','sparkle','black_heart'];
-    var ICON = { fire:'bi-fire', heart:'bi-heart', eye:'bi-eye', sparkle:'bi-stars', black_heart:'bi-suit-heart-fill' };
-    var LABEL = { fire:'Fire', heart:'Heart', eye:'Interesting', sparkle:'Sparkle', black_heart:'Black heart' };
-    var bar   = document.getElementById('reactionBar');
+    var KEYS = ['fire', 'heart', 'eye', 'sparkle', 'black_heart'];
+    var ICON = { fire: 'bi-fire', heart: 'bi-heart', eye: 'bi-eye', sparkle: 'bi-stars', black_heart: 'bi-suit-heart-fill' };
+    var LABEL = { fire: 'Fire', heart: 'Heart', eye: 'Interesting', sparkle: 'Sparkle', black_heart: 'Black heart' };
+    var bar = document.getElementById('reactionBar');
     if (!bar) return;
-    var postId      = bar.dataset.postId;
-    var counts      = {{{reactionCounts}}};
+    var postId = bar.dataset.postId;
+    var counts = {{{reactionCounts}}};
     var userReacted = {{{userReactions}}};
 
     function renderBar() {
         bar.textContent = '';
         KEYS.forEach(function (key) {
-            var btn = document.createElement('button');
-            btn.className = 'reaction-btn' + (userReacted.indexOf(key) !== -1 ? ' reaction-btn--active' : '');
-            btn.setAttribute('data-key', key);
-            btn.setAttribute('type', 'button');
-            btn.setAttribute('aria-label', LABEL[key] + ' reaction, ' + (counts[key] || 0));
-            btn.setAttribute('title', LABEL[key]);
-            btn.addEventListener('click', function () { react(key); });
-            var emojiSpan = document.createElement('i');
-            emojiSpan.className = 'bi ' + ICON[key];
-            emojiSpan.setAttribute('aria-hidden', 'true');
-            var countSpan = document.createElement('span');
-            countSpan.className = 'reaction-count';
-            countSpan.textContent = counts[key] || 0;
-            btn.appendChild(emojiSpan);
-            btn.appendChild(document.createTextNode(' '));
-            btn.appendChild(countSpan);
-            bar.appendChild(btn);
+            var button = document.createElement('button');
+            button.className = 'reaction-btn' + (userReacted.indexOf(key) !== -1 ? ' reaction-btn--active' : '');
+            button.type = 'button';
+            button.setAttribute('aria-label', LABEL[key] + ' reaction, ' + (counts[key] || 0));
+            button.setAttribute('aria-pressed', String(userReacted.indexOf(key) !== -1));
+            button.innerHTML = '<i class="bi ' + ICON[key] + '" aria-hidden="true"></i> <span class="reaction-count"></span>';
+            button.querySelector('.reaction-count').textContent = counts[key] || 0;
+            button.addEventListener('click', function () { react(key); });
+            bar.appendChild(button);
         });
     }
 
@@ -223,14 +225,14 @@ document.querySelectorAll('.cancel-reply').forEach(function (btn) {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
             body: JSON.stringify({ emoji: key })
         })
-        .then(function (r) { return r.json(); })
+        .then(function (response) { return response.json(); })
         .then(function (data) {
-            if (data.counts) {
-                counts      = data.counts;
-                userReacted = data.userReactions;
-                renderBar();
-            }
-        });
+            if (!data.counts) return;
+            counts = data.counts;
+            userReacted = data.userReactions;
+            renderBar();
+        })
+        .catch(function () {});
     }
 
     renderBar();

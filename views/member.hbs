@@ -5,8 +5,11 @@
     <div class="profile-avatar-placeholder">{{avatarInitial member.username}}</div>
     {{/if}}
     <div>
-        <div class="profile-username">{{member.username}}</div>
-        <div class="profile-since">Member since {{formatDate member.created_at}} &middot; {{member.posts.length}} post{{#gt member.posts.length 1}}s{{/gt}}</div>
+        <div class="profile-username">
+            {{member.username}}
+            {{#if member.isAdmin}}<img class="admin-verified-badge admin-verified-badge--profile" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
+        </div>
+        <div class="profile-since">Member since {{formatDate member.created_at}} &middot; {{member.posts.length}} {{pluralize member.posts.length "post" "posts"}}</div>
         {{#if member.bio}}
         <div class="profile-bio">&ldquo;{{member.bio}}&rdquo;</div>
         {{/if}}

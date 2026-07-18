@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check auth-service.js && node --check blog-service.js && node --check platform-store.js && node --check public/js/chat.js && node --check public/js/entry-transition.js && node --check public/js/forms.js && node --check public/js/media-upload.js"
+    "check": "node --check server.js && node --check auth-service.js && node --check blog-service.js && node --check media-service.js && node --check platform-store.js && node --check public/js/chat.js && node --check public/js/comments.js && node --check public/js/discovery.js && node --check public/js/entry-transition.js && node --check public/js/forms.js && node --check public/js/gallery.js && node --check public/js/media-upload.js && node --check public/js/navigation.js && node --check public/js/post-media.js",
+    "test": "node --test"
   },
   "author": "Allan John",
   "license": "ISC",

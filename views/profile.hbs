@@ -21,7 +21,10 @@
         <div class="profile-avatar-placeholder" id="avatarPreview">{{avatarInitial profile.username}}</div>
         {{/if}}
         <div>
-            <div class="profile-username">{{profile.username}}</div>
+            <div class="profile-username">
+                {{profile.username}}
+                {{#if session.user.isAdmin}}<img class="admin-verified-badge admin-verified-badge--profile" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
+            </div>
             <div class="profile-since">Club member</div>
         </div>
     </div>

@@ -15,6 +15,10 @@
     <script src="/js/motion.js" defer></script>
     <script src="/js/forms.js" defer></script>
     <script src="/js/media-upload.js" defer></script>
+    <script src="/js/discovery.js" defer></script>
+    <script src="/js/gallery.js" defer></script>
+    <script src="/js/comments.js" defer></script>
+    <script src="/js/navigation.js" defer></script>
 </head>
 <body class="editorial-body">
 <a class="skip-link" href="#main-content">Skip to content</a>
@@ -32,9 +36,7 @@
                 <span class="rail-label">Read</span>
                 {{#navLink "/blog"}}<i class="bi bi-house" aria-hidden="true"></i><span>Home</span>{{/navLink}}
                 <a class="nav-link" href="/about"><i class="bi bi-info-square" aria-hidden="true"></i><span>About</span></a>
-                {{#if session.user}}
                 {{#navLink "/categories"}}<i class="bi bi-grid" aria-hidden="true"></i><span>Channels</span>{{/navLink}}
-                {{/if}}
             </div>
 
             {{#if session.user}}
@@ -80,7 +82,9 @@
             <div class="profile-dropdown" id="railProfileMenu" data-profile-content hidden>
                 <span class="profile-menu-kicker">SIGNED IN</span>
                 <strong class="profile-menu-name">{{session.user.username}}</strong>
-                {{#if session.user.isAdmin}}<span class="admin-badge">ADMIN</span>{{/if}}
+                {{#if session.user.isAdmin}}
+                <span class="admin-badge-hook"><img src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span>Admin</span></span>
+                {{/if}}
                 <a class="dropdown-item" href="/profile"><i class="bi bi-person" aria-hidden="true"></i><span>View profile</span></a>
                 <a class="dropdown-item" href="/settings"><i class="bi bi-sliders2" aria-hidden="true"></i><span>Settings</span></a>
                 <div class="dropdown-divider"></div>
@@ -100,6 +104,79 @@
 
     <main class="app-main" id="main-content" tabindex="-1">
         <div class="page-registration" aria-hidden="true"><span></span><span></span><span></span></div>
+        <header class="discovery-bar" data-discovery>
+            <div class="discovery-primary">
+                <a class="discovery-explore" href="/categories"><i class="bi bi-compass" aria-hidden="true"></i><span>Explore</span></a>
+                {{#if session.user}}
+                <div class="channels-control" data-channels-control>
+                    <a class="channels-link" href="/categories">Channels</a>
+                    <button class="channels-disclosure" type="button" data-channels-trigger
+                        aria-controls="channelsPanel" aria-expanded="false" aria-label="Show joined channels">
+                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <section class="channels-panel" id="channelsPanel" data-channels-panel aria-label="Joined channels" hidden>
+                        <div class="channels-panel-head">
+                            <div>
+                                <span class="channels-panel-kicker">Your edition</span>
+                                <h2>Joined channels</h2>
+                            </div>
+                            <button type="button" class="channels-panel-close" data-channels-close aria-label="Close joined channels">
+                                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        {{#if followedCategories.length}}
+                        <nav class="joined-channel-list" aria-label="Joined channels">
+                            {{#each followedCategories}}
+                            <a href="/blog?category={{id}}">
+                                <span>{{name}}</span>
+                                <small>{{postCount}} {{pluralize postCount "post" "posts"}}</small>
+                            </a>
+                            {{/each}}
+                        </nav>
+                        {{else}}
+                        <p class="channels-panel-empty">Join a channel to keep it close at hand.</p>
+                        {{/if}}
+                        <a class="channels-panel-all" href="/categories">Browse all channels <span aria-hidden="true">&#x2192;</span></a>
+                    </section>
+                </div>
+                {{else}}
+                <a class="channels-link" href="/categories">Channels</a>
+                {{/if}}
+                {{#if session.user}}
+                <button class="mobile-search-trigger" type="button" data-mobile-search-trigger aria-controls="globalSearchForm" aria-expanded="false" aria-label="Open search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                </button>
+                {{/if}}
+            </div>
+
+            {{#if session.user}}
+            <form class="discovery-search" id="globalSearchForm" method="GET" action="/search" role="search" data-search-form>
+                <button class="mobile-search-close" type="button" data-mobile-search-close aria-label="Close search"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                <label class="sr-only" for="globalSearch">Search members and channels</label>
+                <div class="search-combobox">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="globalSearch" name="q" type="search" value="{{query}}" placeholder="Search members or channels"
+                        autocomplete="off" role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
+                        aria-expanded="false" aria-controls="searchSuggestions" data-search-input>
+                    <button type="submit" class="search-submit">Search</button>
+                </div>
+                <div class="search-suggestions" id="searchSuggestions" role="listbox" data-search-list hidden>
+                    <div class="search-suggestions-label" role="presentation">Channels</div>
+                    {{#each categories}}
+                    <a href="/blog?category={{id}}" role="option" data-search-option data-search-value="{{name}}">
+                        <span>{{name}}</span><small>{{postCount}} {{pluralize postCount "post" "posts"}}</small>
+                    </a>
+                    {{/each}}
+                    <div class="search-empty" data-search-empty role="status" hidden>Press Enter to search all stories.</div>
+                </div>
+            </form>
+            {{else}}
+            <div class="discovery-guest-actions">
+                <a href="/login">Log in</a>
+                <a href="/register">Create account</a>
+            </div>
+            {{/if}}
+        </header>
         {{{body}}}
     </main>
 
@@ -120,13 +197,16 @@
 
     {{#if session.user}}
     <div class="mobile-profile-scrim" data-mobile-profile-scrim hidden></div>
-    <section class="mobile-profile-sheet" id="mobileProfileSheet" aria-label="Profile menu" aria-hidden="true" hidden>
+    <section class="mobile-profile-sheet" id="mobileProfileSheet" role="dialog" aria-modal="true" aria-label="Profile menu" aria-hidden="true" hidden>
         <div class="sheet-handle" aria-hidden="true"></div>
         <div class="sheet-profile">
             <span class="profile-avatar-small">
                 {{#if session.user.avatar_url}}<img src="{{session.user.avatar_url}}" alt="">{{else}}<span>{{avatarInitial session.user.username}}</span>{{/if}}
             </span>
-            <div><strong>{{session.user.username}}</strong><span>Club member</span></div>
+            <div>
+                <strong>{{session.user.username}}</strong>
+                <span>Club member {{#if session.user.isAdmin}}<img class="admin-verified-badge admin-verified-badge--inline" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}</span>
+            </div>
         </div>
         <a href="/profile"><i class="bi bi-person" aria-hidden="true"></i>Profile</a>
         <a href="/settings"><i class="bi bi-sliders2" aria-hidden="true"></i>Settings</a>
@@ -139,66 +219,5 @@
     {{/if}}
 </div>
 
-<script>
-(function () {
-    var tokenMeta = document.querySelector('meta[name="csrf-token"]');
-    window.CSRF_TOKEN = tokenMeta ? tokenMeta.content : '';
-
-    document.querySelectorAll('[data-profile-menu]').forEach(function (menu) {
-        var trigger = menu.querySelector('[data-profile-trigger]');
-        var content = menu.querySelector('[data-profile-content]');
-        function setOpen(open, restoreFocus) {
-            menu.classList.toggle('is-open', open);
-            trigger.setAttribute('aria-expanded', String(open));
-            content.hidden = !open;
-            if (!open && restoreFocus) trigger.focus();
-        }
-        trigger.addEventListener('click', function (event) {
-            event.stopPropagation();
-            setOpen(!menu.classList.contains('is-open'), false);
-        });
-        document.addEventListener('click', function (event) {
-            if (!menu.contains(event.target) && menu.classList.contains('is-open')) setOpen(false, true);
-        });
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && menu.classList.contains('is-open')) setOpen(false, true);
-        });
-    });
-
-    var mobileTrigger = document.querySelector('[data-mobile-profile-trigger]');
-    var mobileSheet = document.getElementById('mobileProfileSheet');
-    var mobileScrim = document.querySelector('[data-mobile-profile-scrim]');
-    function setMobileProfile(open, restoreFocus) {
-        if (!mobileTrigger || !mobileSheet || !mobileScrim) return;
-        mobileTrigger.setAttribute('aria-expanded', String(open));
-        mobileSheet.setAttribute('aria-hidden', String(!open));
-        mobileSheet.hidden = !open;
-        mobileScrim.hidden = !open;
-        document.body.classList.toggle('profile-sheet-open', open);
-        if (open) {
-            var firstAction = mobileSheet.querySelector('a, button');
-            if (firstAction) window.setTimeout(function () { firstAction.focus(); }, 0);
-        }
-        if (!open && restoreFocus) mobileTrigger.focus();
-    }
-    if (mobileTrigger) mobileTrigger.addEventListener('click', function () {
-        setMobileProfile(mobileTrigger.getAttribute('aria-expanded') !== 'true', false);
-    });
-    if (mobileScrim) mobileScrim.addEventListener('click', function () { setMobileProfile(false, true); });
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && mobileTrigger && mobileTrigger.getAttribute('aria-expanded') === 'true') setMobileProfile(false, true);
-    });
-
-    {{#if session.user}}
-    var unreadMarks = document.querySelectorAll('[data-unread-mark]');
-    if (unreadMarks.length) {
-        var lastSeen = parseInt(localStorage.getItem('tommys_club_last_msg') || '0', 10);
-        fetch('/chat/unread-count').then(function (response) { return response.json(); }).then(function (data) {
-            if (data.latestId && data.latestId > lastSeen) unreadMarks.forEach(function (mark) { mark.hidden = false; });
-        }).catch(function () {});
-    }
-    {{/if}}
-})();
-</script>
 </body>
 </html>

@@ -18,10 +18,10 @@ const {
     SupabaseRuntimeState
 } = require('./platform-store');
 
-const blogService = require('./blog-service');
-const authService = require('./auth-service');
+const defaultBlogService = require('./blog-service');
+const defaultAuthService = require('./auth-service');
+const { createMediaService, ALLOWED_IMAGE_MIME, MAX_IMAGE_BYTES } = require('./media-service');
 
-const app = express();
 const PORT = process.env.PORT || 8080;
 const isProd = process.env.NODE_ENV === 'production';
 const APP_URL = (process.env.APP_URL || 'http://localhost:8080').replace(/\/$/, '');
@@ -43,20 +43,37 @@ if (isProd && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length 
     throw new Error('SESSION_SECRET must be at least 32 characters in production');
 }
 
+const ADMIN_USER_ID = (process.env.ADMIN_USER_ID || '').trim();
+if (ADMIN_USER_ID && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ADMIN_USER_ID)) {
+    throw new Error('ADMIN_USER_ID must be a valid UUID');
+}
+if (isProd && !ADMIN_USER_ID) {
+    throw new Error('ADMIN_USER_ID must be configured in production');
+}
+
+function createApp(dependencies = {}) {
+const app = express();
 if (isProd) app.set('trust proxy', 1);
 
-const platformClient = createServerClient();
-const runtimeState = new SupabaseRuntimeState(platformClient);
+const blogService = dependencies.blogService || defaultBlogService;
+const authService = dependencies.authService || defaultAuthService;
+const platformClient = dependencies.platformClient || createServerClient();
+const runtimeState = dependencies.runtimeState || new SupabaseRuntimeState(platformClient);
 
 // ── ImageKit ──────────────────────────────────────────────
-const imagekit = new ImageKit({
+const imagekit = dependencies.imagekit || new ImageKit({
     publicKey:   process.env.IMAGEKIT_PUBLIC_KEY,
     privateKey:  process.env.IMAGEKIT_PRIVATE_KEY,
     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
 });
+const mediaService = dependencies.mediaService || createMediaService({
+    imagekit,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+    logger: dependencies.logger || console
+});
 
 // ── File upload — type + size guards ─────────────────────
-const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'];
+const ALLOWED_MIME = ALLOWED_IMAGE_MIME;
 const SERVER_UPLOAD_MAX = isProd ? 4 * 1024 * 1024 : 8 * 1024 * 1024;
 const upload = multer({
     limits: { fileSize: SERVER_UPLOAD_MAX },
@@ -83,8 +100,10 @@ app.engine('.hbs', exphbs.engine({
     extname: '.hbs',
     helpers: {
         navLink(url, options) {
-            const active = url === app.locals.activeRoute ? ' active' : '';
-            return `<a class="nav-link${active}" href="${url}">${options.fn(this)}</a>`;
+            const activeRoute = options.data?.root?.activeRoute || '';
+            const active = url === activeRoute ? ' active' : '';
+            const current = active ? ' aria-current="page"' : '';
+            return `<a class="nav-link${active}" href="${url}"${current}>${options.fn(this)}</a>`;
         },
         equal(a, b, options) {
             return a == b ? options.fn(this) : options.inverse(this);
@@ -145,19 +164,18 @@ app.engine('.hbs', exphbs.engine({
         pluralize(count, singular, plural) {
             return Number(count) === 1 ? singular : (plural || `${singular}s`);
         },
-        mediaUrl(src, preset) {
-            if (!src || typeof src !== 'string') return '';
-            const transforms = {
-                feed: 'w-960,h-960,c-at_max,q-80,f-auto',
-                post: 'w-1600,h-1600,c-at_max,q-82,f-auto',
-                chat: 'w-320,h-320,c-at_max,q-78,f-auto'
-            };
-            const transform = transforms[preset];
-            if (!transform || !process.env.IMAGEKIT_URL_ENDPOINT ||
-                !src.startsWith(process.env.IMAGEKIT_URL_ENDPOINT)) return src;
-            return `${src}${src.includes('?') ? '&' : '?'}tr=${transform}`;
+        hasMultiple(value, options) {
+            return Number(value) > 1 ? options.fn(this) : options.inverse(this);
         },
-        gt(a, b) { return a > b; },
+        pinAction(categoryId, isPinned) {
+            const id = Number.parseInt(categoryId, 10);
+            return Number.isInteger(id) && id > 0
+                ? `/categories/${id}/${isPinned ? 'unpin' : 'pin'}`
+                : '#';
+        },
+        mediaUrl(src, preset) {
+            return mediaService.deliveryUrl(src, preset);
+        },
         inc(n) { return n + 1; }
     }
 }));
@@ -242,7 +260,7 @@ app.use(session({
 }));
 
 app.use((req, res, next) => {
-    const privatePrefixes = ['/chat', '/profile', '/settings', '/posts', '/categories', '/member', '/admin', '/account'];
+    const privatePrefixes = ['/chat', '/profile', '/settings', '/posts', '/categories', '/member', '/admin', '/account', '/search'];
     if (['/', '/login', '/register', '/terms', '/enter', '/auth/confirm'].includes(req.path) ||
         privatePrefixes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) {
         res.set('Cache-Control', 'private, no-store');
@@ -252,7 +270,7 @@ app.use((req, res, next) => {
 
 // Browser state-changing requests must carry a token issued to this session.
 // This protects form and fetch endpoints against cross-site request forgery.
-const multipartCsrfPaths = new Set(['/posts/add', '/posts/upload-image', '/profile', '/chat/send']);
+const multipartCsrfPaths = new Set(['/posts/add', '/profile', '/chat/send']);
 
 function csrfTokenIsValid(req) {
     const supplied = req.get('x-csrf-token') || req.body?._csrf;
@@ -282,13 +300,16 @@ app.use((req, res, next) => {
 // Make session available to all templates
 app.use((req, res, next) => {
     res.locals.session = req.session;
+    if (req.session.user && ADMIN_USER_ID) {
+        req.session.user.isAdmin = req.session.user.id === ADMIN_USER_ID;
+    }
     next();
 });
 
 // Track active route for nav highlighting
 app.use((req, res, next) => {
     const route = req.path.substring(1);
-    app.locals.activeRoute = '/' + (isNaN(route.split('/')[1])
+    res.locals.activeRoute = '/' + (isNaN(route.split('/')[1])
         ? route.replace(/\/(?!.*)/, '')
         : route.replace(/\/(.*)/, ''));
     next();
@@ -299,7 +320,7 @@ function isOpenPath(pathname) {
     return pathname === '/' || pathname === '/login' || pathname === '/register' ||
         pathname === '/pending' || pathname === '/rejected' || pathname === '/terms' ||
         pathname === '/about' || pathname === '/auth/refresh-status' || pathname === '/auth/confirm' ||
-        pathname === '/blog' || pathname.startsWith('/blog/');
+        pathname === '/categories' || pathname === '/blog' || pathname.startsWith('/blog/');
 }
 
 app.use(async (req, res, next) => {
@@ -345,59 +366,46 @@ app.use(async (req, res, next) => {
     next();
 });
 
+app.use(async (req, res, next) => {
+    if (!req.session.user || req.method !== 'GET' ||
+        (req.accepts('json') && !req.accepts('html')) ||
+        req.path.startsWith('/chat/')) return next();
+    try {
+        res.locals.followedCategories = await blogService.getFollowedCategories(req.session.user.id);
+    } catch (_) {
+        res.locals.followedCategories = [];
+    }
+    next();
+});
+
 function ensureLogin(req, res, next) {
     if (!req.session.user) return res.redirect('/login');
     next();
 }
 
 // ── ImageKit upload helper ────────────────────────────────
-function streamUpload(req, folder = 'blog') {
+function streamUpload(req, purpose) {
     const originalName = path.basename(req.file.originalname || `upload-${Date.now()}`);
     const fileName = originalName.replace(/[^a-zA-Z0-9._-]/g, '-').slice(0, 120) || `upload-${Date.now()}`;
+    const folder = mediaService.folderFor(req.session.user.id, purpose);
+    if (!folder) throw new Error('Unsupported media destination');
     return imagekit.upload({
         file:     req.file.buffer,
         fileName,
-        folder:   `/${folder}`
+        folder
     });
 }
 
-const DIRECT_MEDIA_KINDS = Object.freeze({
-    'post-cover': 'posts/covers',
-    'post-inline': 'posts/inline',
-    avatar: 'avatars',
-    chat: 'chat'
-});
-
 function directMediaFolder(userId, kind) {
-    const suffix = DIRECT_MEDIA_KINDS[kind];
-    return suffix ? `/tommys-club/${userId}/${suffix}` : null;
+    return mediaService.folderFor(userId, kind);
 }
 
-async function verifyDirectMedia(userId, kind, fileId, submittedUrl) {
-    const expectedFolder = directMediaFolder(userId, kind);
-    if (!expectedFolder || typeof fileId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(fileId)) {
-        throw new Error('Invalid uploaded image');
-    }
-    const details = await imagekit.getFileDetails(fileId);
-    const pathName = details.filePath || '';
-    const fileUrl = details.url || '';
-    if (details.fileType !== 'image' || Number(details.size) > 8 * 1024 * 1024 ||
-        !pathName.startsWith(`${expectedFolder}/`) ||
-        !process.env.IMAGEKIT_URL_ENDPOINT || !fileUrl.startsWith(process.env.IMAGEKIT_URL_ENDPOINT) ||
-        (submittedUrl && submittedUrl !== fileUrl)) {
-        throw new Error('Invalid uploaded image');
-    }
-    return { url: fileUrl, fileId: details.fileId };
+async function verifyDirectMedia(userId, kind, fileId) {
+    return mediaService.verify(userId, kind, fileId);
 }
 
 function transformedImageUrl(url, preset) {
-    const transforms = {
-        post: 'w-1600,h-1600,c-at_max,q-82,f-auto',
-        chat: 'w-320,h-320,c-at_max,q-78,f-auto'
-    };
-    if (!url || !transforms[preset] || !process.env.IMAGEKIT_URL_ENDPOINT ||
-        !url.startsWith(process.env.IMAGEKIT_URL_ENDPOINT)) return url;
-    return `${url}${url.includes('?') ? '&' : '?'}tr=${transforms[preset]}`;
+    return mediaService.deliveryUrl(url, preset);
 }
 
 function safeJson(value) {
@@ -405,6 +413,50 @@ function safeJson(value) {
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e')
         .replace(/&/g, '\\u0026');
+}
+
+function buildCommentTree(comments, viewer) {
+    const byId = new Map();
+    const roots = [];
+    for (const comment of comments || []) {
+        byId.set(Number(comment.id), {
+            ...comment,
+            children: [],
+            canDelete: Boolean(viewer && (viewer.isAdmin || viewer.id === comment.author_id))
+        });
+    }
+    for (const comment of byId.values()) {
+        const parent = comment.parent_id ? byId.get(Number(comment.parent_id)) : null;
+        if (parent) parent.children.push(comment);
+        else roots.push(comment);
+    }
+    return roots;
+}
+
+function parseBodyArray(value) {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== 'string' || !value) return [];
+    if (value.trim().startsWith('[')) {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
+        }
+    }
+    return [value];
+}
+
+function safeReturnPath(req, fallback = '/categories') {
+    const referer = req.get('referer');
+    if (!referer) return fallback;
+    try {
+        const target = new URL(referer);
+        if (target.origin !== parsedAppUrl.origin) return fallback;
+        return `${target.pathname}${target.search}${target.hash}`;
+    } catch (_) {
+        return fallback;
+    }
 }
 
 // ── Routes: public ────────────────────────────────────────
@@ -425,17 +477,31 @@ app.get('/blog', async (req, res) => {
     try {
         let posts;
         if (req.query.category) {
-            posts = await blogService.getPublishedPostsByCategory(req.query.category);
+            const categoryId = Number.parseInt(req.query.category, 10);
+            if (!Number.isInteger(categoryId) || categoryId < 1) return res.status(400).render('404');
+            posts = await blogService.getPublishedPostsByCategory(categoryId);
         } else {
-            posts = await blogService.getPublishedPosts();
+            posts = req.session.user
+                ? await blogService.getPublishedPostsForUser(req.session.user.id)
+                : await blogService.getPublishedPosts();
         }
-        const categories = await blogService.getCategories();
+        const categories = await blogService.getCategories(req.session.user?.id);
+        const activeCategory = req.query.category
+            ? categories.find(category => Number(category.id) === Number(req.query.category))
+            : null;
+        if (req.query.category && !activeCategory) return res.status(404).render('404');
         res.render('blog', {
             posts,
             categories,
             activeCategory: req.query.category || null,
+            activeCategoryDetails: activeCategory || null,
             featuredPost: posts[0] || null,
-            recentPosts: posts.slice(1)
+            recentPosts: posts.slice(1),
+            message: posts.length === 0
+                ? (req.session.user && !req.query.category
+                    ? 'Join a channel to build your personal feed.'
+                    : 'No posts found')
+                : null
         });
     } catch (err) {
         res.render('blog', { posts: [], categories: [], message: 'No posts found' });
@@ -449,22 +515,20 @@ app.get('/blog/:id', async (req, res) => {
         const canViewDraft = user && (user.isAdmin || user.id === post.author_id);
         if (!post.published && !canViewDraft) return res.status(404).render('404');
         const allComments = await blogService.getCommentsByPost(req.params.id);
-        const categories  = await blogService.getCategories();
+        const categories  = await blogService.getCategories(req.session.user?.id);
         const { counts: reactionCounts, userReactions } =
             await blogService.getReactionsByPost(req.params.id, req.session.user?.id);
 
-        const topLevel = allComments.filter(c => !c.parent_id);
-        const replies  = allComments.filter(c => c.parent_id);
-        const commentTree = topLevel.map(c => ({
-            ...c,
-            replies: replies.filter(r => r.parent_id === c.id)
-        }));
+        const commentTree = buildCommentTree(allComments, user);
+        const commentError = req.session.commentError || null;
+        delete req.session.commentError;
 
         res.render('post', {
             post,
             commentTree,
             categories,
             commentCount:   allComments.length,
+            commentError,
             reactionCounts: JSON.stringify(reactionCounts),
             userReactions:  JSON.stringify(userReactions)
         });
@@ -479,29 +543,41 @@ app.post('/blog/:id/comments', ensureLogin, async (req, res) => {
     const postId = Number.parseInt(req.params.id, 10);
     const parentId = req.body.parent_id ? Number.parseInt(req.body.parent_id, 10) : null;
     const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
-    if (!Number.isInteger(postId) || postId < 1 || (parentId !== null && (!Number.isInteger(parentId) || parentId < 1)) ||
-        !body || body.length > 2000) {
+    const imageFileId = typeof req.body.image_file_id === 'string' ? req.body.image_file_id : '';
+    if (!Number.isInteger(postId) || postId < 1 ||
+        (parentId !== null && (!Number.isInteger(parentId) || parentId < 1)) ||
+        (!body && !imageFileId) || body.length > 2000) {
+        req.session.commentError = 'Add a comment or image, up to 2,000 characters.';
         return res.redirect(`/blog/${encodeURIComponent(req.params.id)}#comments`);
     }
+    let verifiedImage = null;
     try {
+        if (imageFileId) {
+            verifiedImage = await verifyDirectMedia(req.session.user.id, 'comment', imageFileId);
+        }
         await blogService.addComment({
             post_id: postId,
             author_id: req.session.user.id,
             parent_id: parentId,
-            body
+            body,
+            image: verifiedImage
         });
-    } catch (err) { /* redirect without leaking database details */ }
+    } catch (err) {
+        if (verifiedImage?.fileId) await mediaService.remove(verifiedImage.fileId, 'rejected comment image');
+        req.session.commentError = 'Your comment could not be posted. Check the image and try again.';
+    }
     res.redirect(`/blog/${encodeURIComponent(req.params.id)}#comments`);
 });
 
 app.post('/comments/delete/:id', ensureLogin, async (req, res) => {
     const postId = req.body.postId || req.query.post;
     try {
-        await blogService.deleteCommentIfAuthorized(
+        const deleted = await blogService.deleteCommentIfAuthorized(
             req.params.id,
             req.session.user.id,
             req.session.user.isAdmin
         );
+        if (deleted?.image_file_id) await mediaService.remove(deleted.image_file_id, 'deleted comment image');
     } catch (e) { /* redirect without leaking database details */ }
     res.redirect(`/blog/${encodeURIComponent(String(postId || ''))}#comments`);
 });
@@ -571,7 +647,7 @@ app.get('/auth/confirm', confirmationLimiter, async (req, res) => {
 app.post('/login', loginLimiter, async (req, res) => {
     try {
         const user = await authService.loginUser(req.body.email, req.body.password);
-        user.isAdmin = !!(process.env.ADMIN_EMAIL && user.email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase());
+        user.isAdmin = Boolean(ADMIN_USER_ID && user.id === ADMIN_USER_ID);
         req.session.regenerate(err => {
             if (err) return res.status(500).render('login', { ...GATE, errorMessage: 'Unable to start a secure session' });
             req.session.user = user;
@@ -619,7 +695,9 @@ app.post('/logout', (req, res) => {
 app.post('/account/delete', ensureLogin, async (req, res) => {
     try {
         await authService.verifyPassword(req.session.user.email, req.body.current_password);
+        const mediaFileIds = await blogService.prepareAccountDeletion(req.session.user.id);
         await authService.deleteUserAccount(req.session.user.id);
+        await Promise.all(mediaFileIds.map(fileId => mediaService.remove(fileId, 'deleted account media')));
         req.session.destroy(() => res.redirect('/login?deleted=1'));
     } catch (err) {
         res.status(400).render('settings', {
@@ -696,9 +774,26 @@ app.post('/media/auth', ensureLogin, mediaAuthLimiter, (req, res) => {
         urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
         uploadEndpoint: 'https://upload.imagekit.io/api/v1/files/upload',
         folder,
-        maxBytes: 8 * 1024 * 1024,
+        maxBytes: MAX_IMAGE_BYTES,
         allowedTypes: ALLOWED_MIME
     });
+});
+
+app.post('/media/discard', ensureLogin, mediaAuthLimiter, async (req, res) => {
+    const kind = typeof req.body.kind === 'string' ? req.body.kind : '';
+    const fileIds = parseBodyArray(req.body.file_ids).filter(Boolean).slice(0, 4);
+    if (!directMediaFolder(req.session.user.id, kind) || !fileIds.length) {
+        return res.status(400).json({ error: 'Invalid media cleanup request' });
+    }
+    await Promise.all(fileIds.map(async fileId => {
+        try {
+            const media = await verifyDirectMedia(req.session.user.id, kind, fileId);
+            if (!await blogService.isMediaFileAttached(media.fileId)) {
+                await mediaService.remove(media.fileId, 'abandoned direct upload');
+            }
+        } catch (_) { /* never reveal whether another user owns an asset */ }
+    }));
+    res.status(204).end();
 });
 
 app.get('/profile', ensureLogin, async (req, res) => {
@@ -723,14 +818,13 @@ app.post('/profile', ensureLogin, parseImageUpload('avatar'), verifyCsrfToken, a
             const directMedia = await verifyDirectMedia(
                 req.session.user.id,
                 'avatar',
-                req.body.avatar_file_id,
-                req.body.avatar_url
+                req.body.avatar_file_id
             );
             updates.avatar_url = directMedia.url;
             updates.avatar_file_id = directMedia.fileId;
             newFileId = directMedia.fileId;
         } else if (req.file) {
-            const result = await streamUpload(req, 'avatars');
+            const result = await streamUpload(req, 'avatar');
             updates.avatar_url = result.url;
             updates.avatar_file_id = result.fileId;
             newFileId = result.fileId;
@@ -746,13 +840,11 @@ app.post('/profile', ensureLogin, parseImageUpload('avatar'), verifyCsrfToken, a
         delete publicUpdates.avatar_file_id;
         req.session.user = { ...req.session.user, ...publicUpdates };
         if (previousFileId && previousFileId !== newFileId) {
-            imagekit.deleteFile(previousFileId).catch(error => {
-                console.error('Unable to remove replaced profile image:', error.message);
-            });
+            await mediaService.remove(previousFileId, 'replaced profile image');
         }
         res.render('profile', { profile: { ...req.session.user, ...publicUpdates }, successMessage: 'Profile updated!' });
     } catch (err) {
-        if (newFileId) imagekit.deleteFile(newFileId).catch(() => {});
+        if (newFileId) await mediaService.remove(newFileId, 'rejected profile image');
         res.render('profile', { profile: req.session.user, errorMessage: err.message });
     }
 });
@@ -849,7 +941,7 @@ app.get('/posts', ensureLogin, async (req, res) => {
                 ? await blogService.getAllPosts()
                 : await blogService.getPostsByAuthor(req.session.user.id);
         }
-        const categories = await blogService.getCategories();
+        const categories = await blogService.getCategories(req.session.user.id);
         res.render('posts', { posts, categories });
     } catch (err) {
         res.render('posts', { message: 'No results', posts: [] });
@@ -858,7 +950,7 @@ app.get('/posts', ensureLogin, async (req, res) => {
 
 app.get('/posts/add', ensureLogin, async (req, res) => {
     try {
-        const categories = await blogService.getCategories();
+        const categories = await blogService.getCategories(req.session.user.id);
         res.render('addPost', { categories });
     } catch (err) {
         res.render('addPost', { categories: [] });
@@ -866,44 +958,73 @@ app.get('/posts/add', ensureLogin, async (req, res) => {
 });
 
 app.post('/posts/add', ensureLogin, parseImageUpload('featureImage'), verifyCsrfToken, async (req, res) => {
-    let uploadedFileId = null;
+    const verifiedImages = [];
     try {
         if (req.uploadError) throw new Error(req.uploadError);
         if (typeof req.body.title !== 'string' || !req.body.title.trim() || req.body.title.trim().length > 160) {
             throw new Error('Title must be between 1 and 160 characters');
         }
         if (typeof req.body.body !== 'string' || req.body.body.length > 200000) throw new Error('Post content is too large');
-        let imageUrl = '';
-        if (req.body.feature_image_file_id) {
+        const requestedFileIds = parseBodyArray(
+            req.body.image_file_ids || req.body.post_image_file_ids || req.body['image_file_ids[]']
+        ).filter(Boolean);
+        const altTexts = parseBodyArray(
+            req.body.image_alt || req.body.image_alt_texts || req.body['image_alt[]']
+        );
+        if (requestedFileIds.length > 4) throw new Error('A post can include up to 4 images');
+
+        for (let index = 0; index < requestedFileIds.length; index++) {
             const directMedia = await verifyDirectMedia(
                 req.session.user.id,
-                'post-cover',
-                req.body.feature_image_file_id,
-                req.body.feature_image_url
+                'post-image',
+                requestedFileIds[index]
             );
-            imageUrl = directMedia.url;
-            uploadedFileId = directMedia.fileId;
-        } else if (req.file) {
-            const result = await streamUpload(req);
-            imageUrl = result.url;
-            uploadedFileId = result.fileId;
+            verifiedImages.push({
+                ...directMedia,
+                altText: String(altTexts[index] || '').trim().slice(0, 300)
+            });
+        }
+
+        if (!verifiedImages.length && req.body.feature_image_file_id) {
+            const legacyImage = await verifyDirectMedia(
+                req.session.user.id,
+                'post-cover',
+                req.body.feature_image_file_id
+            );
+            verifiedImages.push({
+                ...legacyImage,
+                altText: req.body.title.trim().slice(0, 300)
+            });
+        } else if (!verifiedImages.length && req.file) {
+            const result = await streamUpload(req, 'post-image');
+            verifiedImages.push({
+                url: result.url,
+                fileId: result.fileId,
+                width: Number(result.width) || null,
+                height: Number(result.height) || null,
+                altText: req.body.title.trim().slice(0, 300)
+            });
         }
         const intent = req.body.intent === 'publish' ? 'publish' : 'draft';
         const postData = {
             ...req.body,
             title: req.body.title.trim(),
-            featureImage: imageUrl,
-            featureImageFileId: uploadedFileId,
+            images: verifiedImages,
             published: intent === 'publish'
         };
         await blogService.addPost(postData, req.session.user.id);
         res.redirect('/posts');
     } catch (err) {
-        if (uploadedFileId) imagekit.deleteFile(uploadedFileId).catch(() => {});
-        const categories = await blogService.getCategories().catch(() => []);
+        await Promise.all(verifiedImages.map(image =>
+            mediaService.remove(image.fileId, 'rejected post image')
+        ));
+        const categories = await blogService.getCategories(req.session.user.id).catch(() => []);
         const safeMessages = [
             'Title must be between 1 and 160 characters',
             'Post content is too large',
+            'A post can include up to 4 images',
+            'Invalid uploaded image',
+            'Uploaded image could not be verified',
             'Image must be 8 MB or smaller.',
             'Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'
         ];
@@ -915,31 +1036,8 @@ app.post('/posts/add', ensureLogin, parseImageUpload('featureImage'), verifyCsrf
     }
 });
 
-app.post('/posts/upload-image', ensureLogin, parseImageUpload('image'), verifyCsrfToken, async (req, res) => {
-    try {
-        if (req.uploadError) throw new Error(req.uploadError);
-        if (req.body.image_file_id) {
-            const directMedia = await verifyDirectMedia(
-                req.session.user.id,
-                'post-inline',
-                req.body.image_file_id,
-                req.body.image_url
-            );
-            return res.json({ url: transformedImageUrl(directMedia.url, 'post'), fileId: directMedia.fileId });
-        }
-        if (!req.file) return res.status(400).json({ error: 'No file provided' });
-        const result = await streamUpload(req, 'posts');
-        res.json({ url: transformedImageUrl(result.url, 'post') });
-    } catch (err) {
-        const safeMessages = [
-            'No file provided',
-            'Image must be 8 MB or smaller.',
-            'Only image files are allowed (JPEG, PNG, GIF, WebP, AVIF)'
-        ];
-        res.status(400).json({
-            error: safeMessages.includes(err.message) ? err.message : 'Image could not be uploaded. Try again.'
-        });
-    }
+app.post('/posts/upload-image', ensureLogin, (_req, res) => {
+    res.status(410).json({ error: 'Inline image uploads are no longer supported. Use the four-image story gallery.' });
 });
 
 app.post('/posts/delete/:id', ensureLogin, async (req, res) => {
@@ -951,11 +1049,8 @@ app.post('/posts/delete/:id', ensureLogin, async (req, res) => {
             return res.status(403).render('404');
         }
         const deleted = await blogService.deletePostById(req.params.id);
-        if (deleted?.feature_image_file_id) {
-            imagekit.deleteFile(deleted.feature_image_file_id).catch(error => {
-                console.error('Unable to remove deleted post image:', error.message);
-            });
-        }
+        const fileIds = [...new Set(deleted?.mediaFileIds || [])];
+        await Promise.all(fileIds.map(fileId => mediaService.remove(fileId, 'deleted post image')));
         res.redirect('/posts');
     } catch (err) {
         res.status(500).send('Unable to remove post');
@@ -964,9 +1059,9 @@ app.post('/posts/delete/:id', ensureLogin, async (req, res) => {
 
 // ── Routes: categories ────────────────────────────────────
 
-app.get('/categories', ensureLogin, async (req, res) => {
+app.get('/categories', async (req, res) => {
     try {
-        const categories = await blogService.getCategories();
+        const categories = await blogService.getCategories(req.session.user?.id);
         res.render('categories', { categories });
     } catch (err) {
         res.render('categories', { message: 'No results', categories: [] });
@@ -995,12 +1090,99 @@ app.post('/categories/delete/:id', ensureAdmin, async (req, res) => {
     }
 });
 
+app.post('/categories/:id/follow', ensureLogin, async (req, res) => {
+    const categoryId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(categoryId) || categoryId < 1) return res.status(400).render('404');
+    try {
+        await blogService.followCategory(req.session.user.id, categoryId);
+    } catch (_) {
+        return res.status(404).render('404');
+    }
+    res.redirect(safeReturnPath(req));
+});
+
+app.post('/categories/:id/unfollow', ensureLogin, async (req, res) => {
+    const categoryId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(categoryId) || categoryId < 1) return res.status(400).render('404');
+    try {
+        await blogService.unfollowCategory(req.session.user.id, categoryId);
+    } catch (_) {
+        return res.status(400).render('404');
+    }
+    res.redirect(safeReturnPath(req));
+});
+
+app.post('/categories/:id/pin', ensureAdmin, async (req, res) => {
+    const categoryId = Number.parseInt(req.params.id, 10);
+    const postId = Number.parseInt(req.body.post_id, 10);
+    if (!Number.isInteger(categoryId) || categoryId < 1 || !Number.isInteger(postId) || postId < 1) {
+        return res.status(400).render('404');
+    }
+    try {
+        await blogService.pinPost(categoryId, postId, req.session.user.id);
+        res.redirect(`/blog?category=${categoryId}`);
+    } catch (_) {
+        res.status(400).render('404');
+    }
+});
+
+app.post('/categories/:id/unpin', ensureAdmin, async (req, res) => {
+    const categoryId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(categoryId) || categoryId < 1) return res.status(400).render('404');
+    try {
+        await blogService.unpinCategory(categoryId);
+        res.redirect(`/blog?category=${categoryId}`);
+    } catch (_) {
+        res.status(400).render('404');
+    }
+});
+
+app.get('/search', ensureLogin, async (req, res) => {
+    const query = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 64) : '';
+    try {
+        const results = await blogService.searchDirectory(query);
+        if (req.accepts('json') && !req.accepts('html')) {
+            return res.json({
+                query,
+                results: [
+                    ...results.members.map(member => ({
+                        type: 'member',
+                        id: member.id,
+                        label: member.username,
+                        href: `/member/${encodeURIComponent(member.username)}`,
+                        avatar_url: member.avatar_url || null,
+                        isAdmin: member.isAdmin
+                    })),
+                    ...results.categories.map(category => ({
+                        type: 'category',
+                        id: category.id,
+                        label: category.name,
+                        description: `/${category.slug}`,
+                        href: `/blog?category=${category.id}`
+                    }))
+                ]
+            });
+        }
+        res.render('search', { query, members: results.members, categories: results.categories });
+    } catch (_) {
+        if (req.accepts('json') && !req.accepts('html')) {
+            return res.status(503).json({ error: 'Search is temporarily unavailable. Try again.' });
+        }
+        res.status(503).render('search', {
+            query,
+            members: [],
+            categories: [],
+            errorMessage: 'Search is temporarily unavailable. Try again.'
+        });
+    }
+});
+
 // ── Routes: member profiles ───────────────────────────────
 
 app.get('/member/:username', ensureLogin, async (req, res) => {
     try {
         const member     = await blogService.getMemberByUsername(req.params.username);
-        const categories = await blogService.getCategories();
+        const categories = await blogService.getCategories(req.session.user.id);
         res.render('member', { member, categories });
     } catch (err) {
         res.status(404).render('404');
@@ -1014,7 +1196,10 @@ app.get('/chat', ensureLogin, async (req, res) => {
         const messages = await blogService.getMessageHistory(100);
         const members  = await blogService.getAllMemberUsernames();
         res.render('chat', {
-            messages,
+            messages: messages.map(message => ({
+                ...message,
+                canDelete: req.session.user.isAdmin || message.author_id === req.session.user.id
+            })),
             chatConfigJson: safeJson({
                 members,
                 currentUserId: req.session.user.id,
@@ -1042,8 +1227,7 @@ app.post('/chat/send', ensureLogin, parseImageUpload('image'), verifyCsrfToken, 
             const directMedia = await verifyDirectMedia(
                 req.session.user.id,
                 'chat',
-                req.body.image_file_id,
-                req.body.image_url
+                req.body.image_file_id
             );
             uploadedFileId = directMedia.fileId;
             media = {
@@ -1062,7 +1246,7 @@ app.post('/chat/send', ensureLogin, parseImageUpload('image'), verifyCsrfToken, 
         res.json({ ok: true, id: result.id, created_at: result.created_at });
     } catch (err) {
         if (uploadedFileId) {
-            imagekit.deleteFile(uploadedFileId).catch(() => {});
+            await mediaService.remove(uploadedFileId, 'rejected chat image');
         }
         const safeMessages = [
             'Add a message or an image',
@@ -1084,9 +1268,7 @@ app.delete('/chat/:id', ensureLogin, async (req, res) => {
             req.session.user.isAdmin
         );
         if (deleted?.image_file_id) {
-            imagekit.deleteFile(deleted.image_file_id).catch((error) => {
-                console.error('Unable to remove orphaned chat image:', error.message);
-            });
+            await mediaService.remove(deleted.image_file_id, 'deleted chat image');
         }
         res.json({ ok: true });
     } catch (err) {
@@ -1116,6 +1298,7 @@ app.get('/chat/messages', ensureLogin, async (req, res) => {
             created_at: message.created_at,
             username: message.profiles?.username || null,
             avatar_url: message.profiles?.avatar_url || null,
+            is_admin: Boolean(message.profiles?.isAdmin),
             image_full_url: message.image_url ? transformedImageUrl(message.image_url, 'post') : null,
             image_thumb_url: message.image_url ? transformedImageUrl(message.image_url, 'chat') : null
         })) });
@@ -1171,6 +1354,27 @@ app.use((err, req, res, _next) => {
 // ── 404 ───────────────────────────────────────────────────
 app.use((req, res) => res.status(404).render('404'));
 
+return {
+    app,
+    blogService,
+    authService,
+    platformClient,
+    runtimeState,
+    imagekit,
+    mediaService,
+    transformedImageUrl
+};
+}
+
+const runtime = createApp();
+const {
+    app,
+    blogService,
+    authService,
+    runtimeState,
+    transformedImageUrl
+} = runtime;
+
 // ── WebSocket server + Supabase realtime relay ────────────
 const httpServer = http.createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: '/chat/ws' });
@@ -1204,7 +1408,8 @@ function startRealtimeRelay() {
                     image_thumb_url: row.image_url ? transformedImageUrl(row.image_url, 'chat') : null,
                     created_at: row.created_at,
                     username:   profile?.username   || null,
-                    avatar_url: profile?.avatar_url || null
+                    avatar_url: profile?.avatar_url || null,
+                    is_admin: Boolean(ADMIN_USER_ID && row.author_id === ADMIN_USER_ID)
                 });
 
                 wss.clients.forEach(client => {
@@ -1235,17 +1440,21 @@ wss.on('connection', async (ws, req) => {
 });
 
 // ── Start ─────────────────────────────────────────────────
-const ready = blogService.initialize()
-    .then(authService.initialize)
-    .then(() => {
-        startRealtimeRelay();
-        if (!process.env.VERCEL) {
-            httpServer.listen(PORT, () =>
-                console.log(`Server running on http://localhost:${PORT}`)
-            );
-        }
-    })
-    .catch(err => console.error('Failed to start:', err));
+const shouldStartRuntime = require.main === module || Boolean(process.env.VERCEL);
+const ready = shouldStartRuntime
+    ? blogService.initialize()
+        .then(authService.initialize)
+        .then(() => {
+            startRealtimeRelay();
+            if (!process.env.VERCEL) {
+                httpServer.listen(PORT, () =>
+                    console.log(`Server running on http://localhost:${PORT}`)
+                );
+            }
+        })
+        .catch(err => console.error('Failed to start:', err))
+    : Promise.resolve();
 
 module.exports = httpServer;
 module.exports.ready = ready;
+module.exports.createApp = (dependencies = {}) => createApp(dependencies).app;

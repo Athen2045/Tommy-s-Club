@@ -1,42 +1,66 @@
 <div class="admin-header">
     <div>
         <h1 class="admin-title">Channels</h1>
-        <p class="admin-sub">Organise posts by topic</p>
+        <p class="admin-sub">Choose the topics you want in your edition.</p>
     </div>
     {{#if session.user.isAdmin}}
-    <a href="/categories/add" class="wf-btn cyan sm">&#x25B8; New Channel</a>
+    <a href="/categories/add" class="wf-btn cyan sm">&#x25B8; New channel</a>
     {{/if}}
 </div>
 
 {{#if message}}
 <div class="empty-state">
-    <i class="bi bi-tags"></i>
-    <h3>No channels yet</h3>
-    {{#if session.user.isAdmin}}
-    <a href="/categories/add" class="wf-btn mt-3" style="display:inline-block">&#x25B8; Create one</a>
-    {{/if}}
+    <i class="bi bi-tags" aria-hidden="true"></i>
+    <h2>No channels yet</h2>
+    {{#if session.user.isAdmin}}<a href="/categories/add" class="wf-btn mt-3">&#x25B8; Create one</a>{{/if}}
 </div>
 {{else}}
-<div class="wf-stack" style="gap:8px;max-width:600px">
+<div class="channel-directory">
     {{#each categories}}
-    <div class="cat-row">
-        <div>
+    <article class="channel-card {{#if isFollowing}}channel-card--joined{{/if}}">
+        <div class="channel-card-copy">
             <a href="/blog?category={{id}}" class="cat-name">{{name}}</a>
-            <div class="cat-slug">/{{slug}}</div>
+            <div class="cat-slug">/{{slug}} &middot; {{postCount}} {{pluralize postCount "post" "posts"}}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px">
-            <span class="cat-count">{{postCount}} {{pluralize postCount "post" "posts"}}</span>
-            {{#if ../session.user.isAdmin}}
-            <form method="POST" action="/categories/delete/{{id}}"
-                style="display:inline"
-                data-confirm="Delete this channel?">
-                <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
-                <button type="submit" class="btn-delete"
-                    style="font-size:10px;padding:3px 8px">Del</button>
-            </form>
-            {{/if}}
-        </div>
-    </div>
+        {{#if ../session.user}}
+        {{#if isFollowing}}
+        <form method="POST" action="/categories/{{id}}/unfollow">
+            <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+            <button type="submit" class="channel-join channel-join--joined" aria-label="Leave {{name}}">
+                <i class="bi bi-check-lg" aria-hidden="true"></i> Joined
+            </button>
+        </form>
+        {{else}}
+        <form method="POST" action="/categories/{{id}}/follow">
+            <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+            <button type="submit" class="channel-join" aria-label="Join {{name}}">Join</button>
+        </form>
+        {{/if}}
+        {{else}}
+        <a class="channel-join" href="/login">Join</a>
+        {{/if}}
+    </article>
     {{/each}}
 </div>
+
+{{#if session.user.isAdmin}}
+<section class="admin-delete-area" aria-labelledby="adminChannelTools">
+    <div>
+        <span class="wf-eyebrow">Admin only</span>
+        <h2 id="adminChannelTools">Delete channels</h2>
+        <p>Deleting a channel cannot be undone. Posts should be moved first.</p>
+    </div>
+    <div class="admin-delete-list">
+        {{#each categories}}
+        <div>
+            <span>{{name}}</span>
+            <form method="POST" action="/categories/delete/{{id}}" data-confirm="Delete the {{name}} channel?">
+                <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+                <button type="submit" class="btn-delete">Delete</button>
+            </form>
+        </div>
+        {{/each}}
+    </div>
+</section>
+{{/if}}
 {{/if}}

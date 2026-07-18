@@ -85,7 +85,11 @@
 
         form.addEventListener('submit', function (event) {
             var file = input.files && input.files[0];
-            if (!file || (idField && idField.value) || uploading) return;
+            if (uploading) {
+                event.preventDefault();
+                return;
+            }
+            if (!file || (idField && idField.value)) return;
             event.preventDefault();
             var submitter = event.submitter;
             uploading = true;

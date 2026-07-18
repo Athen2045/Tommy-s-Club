@@ -1,83 +1,123 @@
 <header class="blog-hero">
-    <div class="blog-hero-eyebrow">TOMMY'S CLUB &middot; INDEPENDENT STORIES &middot; ISSUE 01</div>
-    <h1 class="blog-hero-title">The Stories</h1>
+    <div class="blog-hero-eyebrow">TOMMY'S CLUB &middot; {{#if activeCategoryDetails}}CHANNEL EDITION{{else}}INDEPENDENT STORIES{{/if}} &middot; ISSUE 01</div>
+    <h1 class="blog-hero-title">{{#if activeCategoryDetails}}{{activeCategoryDetails.name}}{{else}}The Stories{{/if}}</h1>
 </header>
 
-<!-- Category filter strip -->
-{{#if categories.length}}
-<div class="category-strip">
-    <a href="/blog" class="category-chip {{#unless activeCategory}}active{{/unless}}">
-        All Posts
-    </a>
-    {{#each categories}}
-    <a href="/blog?category={{id}}" class="category-chip {{#equal id ../activeCategory}}active{{/equal}}">
-        {{name}}
-    </a>
-    {{/each}}
-</div>
-{{/if}}
-
-<!-- Posts grid -->
 {{#if message}}
 <div class="empty-state">
-    <i class="bi bi-journal-x"></i>
-    <h3>No posts yet</h3>
-    <p>Check back soon for new content.</p>
+    <i class="bi bi-journal-x" aria-hidden="true"></i>
+    <h2>{{#if activeCategoryDetails}}No stories in this channel yet{{else}}Your edition is waiting{{/if}}</h2>
+    <p>{{message}}</p>
     {{#if session.user}}
-    <a href="/posts/add" class="wf-btn mt-3" style="display:inline-block">&#x25B8; Write the first post</a>
+    {{#if activeCategoryDetails}}
+    <a href="/posts/add" class="wf-btn mt-3">&#x25B8; Write the first post</a>
+    {{else}}
+    <a href="/categories" class="wf-btn mt-3">Explore channels</a>
+    {{/if}}
     {{/if}}
 </div>
 {{else}}
-
 <div class="post-grid">
-
-    {{! Featured post }}
     {{#if featuredPost}}
-    <a href="/blog/{{featuredPost.id}}" class="post-card">
-        {{#if featuredPost.feature_image}}
-        <img src="{{mediaUrl featuredPost.feature_image "feed"}}" alt="{{featuredPost.title}}" class="post-card-img" loading="eager" fetchpriority="high" width="960" height="720">
-        {{/if}}
-        {{#if featuredPost.categories}}
-        <span class="post-card-cat">{{featuredPost.categories.name}}</span>
-        {{/if}}
-        <div class="post-card-title">{{featuredPost.title}}</div>
-        <div class="post-card-excerpt">{{excerpt featuredPost.body 140}}</div>
+    <article class="post-card {{#if featuredPost.isPinned}}post-card--pinned{{/if}}">
+        <a href="/blog/{{featuredPost.id}}" class="post-card-link" aria-label="Read {{featuredPost.title}}">
+            {{#if featuredPost.post_images.length}}
+            <div class="post-card-media">
+                {{#each featuredPost.post_images}}
+                {{#if @first}}
+                {{#if image_url}}
+                <img src="{{mediaUrl image_url "feed"}}" alt="{{#if alt_text}}{{alt_text}}{{else}}{{../featuredPost.title}}{{/if}}" class="post-card-img" loading="eager" fetchpriority="high" width="960" height="720">
+                {{else}}
+                <img src="{{mediaUrl this "feed"}}" alt="{{../featuredPost.title}}" class="post-card-img" loading="eager" fetchpriority="high" width="960" height="720">
+                {{/if}}
+                {{/if}}
+                {{/each}}
+                <span class="post-card-gallery-mark"><i class="bi bi-images" aria-hidden="true"></i>{{featuredPost.post_images.length}}</span>
+            </div>
+            {{else}}
+            {{#if featuredPost.feature_image}}
+            <img src="{{mediaUrl featuredPost.feature_image "feed"}}" alt="{{featuredPost.title}}" class="post-card-img" loading="eager" fetchpriority="high" width="960" height="720">
+            {{/if}}
+            {{/if}}
+            <div class="post-card-flags">
+                {{#if featuredPost.isPinned}}<span class="post-card-pin"><i class="bi bi-pin-angle-fill" aria-hidden="true"></i> Pinned</span>{{/if}}
+                {{#if featuredPost.categories}}<span class="post-card-cat">{{featuredPost.categories.name}}</span>{{/if}}
+            </div>
+            <h2 class="post-card-title">{{featuredPost.title}}</h2>
+            <p class="post-card-excerpt">{{excerpt featuredPost.body 140}}</p>
+        </a>
         <div class="post-card-meta">
-            <span>{{featuredPost.profiles.username}}</span>
+            <a href="/member/{{featuredPost.profiles.username}}" class="post-card-author">
+                <span>{{featuredPost.profiles.username}}</span>
+                {{#if featuredPost.profiles.isAdmin}}<img class="admin-verified-badge" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
+            </a>
             <span>&middot;</span>
             <span>{{timeAgo featuredPost.created_at}}</span>
             <span>&middot;</span>
             <span>{{readTime featuredPost.body}}</span>
-            <span class="post-card-comments" aria-label="{{featuredPost.comment_count}} comments">
+            <span class="post-card-comments" aria-label="{{featuredPost.comment_count}} {{pluralize featuredPost.comment_count "comment" "comments"}}">
                 <img src="/assets/comment-mark.png" alt="" aria-hidden="true">{{featuredPost.comment_count}}
             </span>
         </div>
-    </a>
+        {{#if session.user.isAdmin}}{{#if activeCategoryDetails}}
+        <form class="post-pin-control" method="POST" action="{{pinAction activeCategoryDetails.id featuredPost.isPinned}}">
+            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            {{#unless featuredPost.isPinned}}<input type="hidden" name="post_id" value="{{featuredPost.id}}">{{/unless}}
+            <button type="submit"><i class="bi bi-pin-angle" aria-hidden="true"></i>{{#if featuredPost.isPinned}}Unpin from channel{{else}}Pin in channel{{/if}}</button>
+        </form>
+        {{/if}}{{/if}}
+    </article>
     {{/if}}
 
-    {{! Remaining posts }}
     {{#each recentPosts}}
-    <a href="/blog/{{id}}" class="post-card">
-        {{#if feature_image}}
-        <img src="{{mediaUrl feature_image "feed"}}" alt="{{title}}" class="post-card-img" loading="lazy" width="960" height="720">
-        {{/if}}
-        {{#if categories}}
-        <span class="post-card-cat">{{categories.name}}</span>
-        {{/if}}
-        <div class="post-card-title">{{title}}</div>
-        <div class="post-card-excerpt">{{excerpt body 110}}</div>
+    <article class="post-card {{#if isPinned}}post-card--pinned{{/if}}">
+        <a href="/blog/{{id}}" class="post-card-link" aria-label="Read {{title}}">
+            {{#if post_images.length}}
+            <div class="post-card-media">
+                {{#each post_images}}
+                {{#if @first}}
+                {{#if image_url}}
+                <img src="{{mediaUrl image_url "feed"}}" alt="{{#if alt_text}}{{alt_text}}{{else}}{{../title}}{{/if}}" class="post-card-img" loading="lazy" width="960" height="720">
+                {{else}}
+                <img src="{{mediaUrl this "feed"}}" alt="{{../title}}" class="post-card-img" loading="lazy" width="960" height="720">
+                {{/if}}
+                {{/if}}
+                {{/each}}
+                <span class="post-card-gallery-mark"><i class="bi bi-images" aria-hidden="true"></i>{{post_images.length}}</span>
+            </div>
+            {{else}}
+            {{#if feature_image}}
+            <img src="{{mediaUrl feature_image "feed"}}" alt="{{title}}" class="post-card-img" loading="lazy" width="960" height="720">
+            {{/if}}
+            {{/if}}
+            <div class="post-card-flags">
+                {{#if isPinned}}<span class="post-card-pin"><i class="bi bi-pin-angle-fill" aria-hidden="true"></i> Pinned</span>{{/if}}
+                {{#if categories}}<span class="post-card-cat">{{categories.name}}</span>{{/if}}
+            </div>
+            <h2 class="post-card-title">{{title}}</h2>
+            <p class="post-card-excerpt">{{excerpt body 110}}</p>
+        </a>
         <div class="post-card-meta">
-            <span>{{profiles.username}}</span>
+            <a href="/member/{{profiles.username}}" class="post-card-author">
+                <span>{{profiles.username}}</span>
+                {{#if profiles.isAdmin}}<img class="admin-verified-badge" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}
+            </a>
             <span>&middot;</span>
             <span>{{timeAgo created_at}}</span>
             <span>&middot;</span>
             <span>{{readTime body}}</span>
-            <span class="post-card-comments" aria-label="{{comment_count}} comments">
+            <span class="post-card-comments" aria-label="{{comment_count}} {{pluralize comment_count "comment" "comments"}}">
                 <img src="/assets/comment-mark.png" alt="" aria-hidden="true">{{comment_count}}
             </span>
         </div>
-    </a>
+        {{#if @root.session.user.isAdmin}}{{#if @root.activeCategoryDetails}}
+        <form class="post-pin-control" method="POST" action="{{pinAction @root.activeCategoryDetails.id isPinned}}">
+            <input type="hidden" name="_csrf" value="{{@root.csrfToken}}">
+            {{#unless isPinned}}<input type="hidden" name="post_id" value="{{id}}">{{/unless}}
+            <button type="submit"><i class="bi bi-pin-angle" aria-hidden="true"></i>{{#if isPinned}}Unpin from channel{{else}}Pin in channel{{/if}}</button>
+        </form>
+        {{/if}}{{/if}}
+    </article>
     {{/each}}
-
 </div>
 {{/if}}

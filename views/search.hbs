@@ -1,0 +1,58 @@
+<header class="search-page-header">
+    <span class="wf-eyebrow">Discovery desk</span>
+    <h1>Search the club</h1>
+    {{#if query}}<p>Members and channels matching “{{query}}”</p>{{else}}<p>Find a member or browse the club’s channels.</p>{{/if}}
+</header>
+
+{{#if errorMessage}}<div class="gate-error search-page-error" role="alert">{{errorMessage}}</div>{{/if}}
+
+{{#if members.length}}
+<section class="search-directory-section" aria-labelledby="memberResults">
+    <div class="search-directory-heading">
+        <h2 id="memberResults">Members</h2>
+        <span>{{members.length}} {{pluralize members.length "result" "results"}}</span>
+    </div>
+    <div class="member-result-grid">
+        {{#each members}}
+        <a href="/member/{{username}}" class="member-result">
+            <span class="member-result-avatar">
+                {{#if avatar_url}}<img src="{{avatar_url}}" alt="" loading="lazy">{{else}}<span>{{avatarInitial username}}</span>{{/if}}
+            </span>
+            <span class="member-result-copy">
+                <strong>{{username}}{{#if isAdmin}}<img class="admin-verified-badge" src="/assets/admin-verified.jpeg" alt="" aria-hidden="true"><span class="sr-only">Administrator</span>{{/if}}</strong>
+                {{#if bio}}<small>{{excerpt bio 90}}</small>{{else}}<small>Club member</small>{{/if}}
+            </span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </a>
+        {{/each}}
+    </div>
+</section>
+{{/if}}
+
+{{#if categories.length}}
+<section class="search-directory-section" aria-labelledby="channelResults">
+    <div class="search-directory-heading">
+        <h2 id="channelResults">Channels</h2>
+        <span>{{categories.length}} {{pluralize categories.length "result" "results"}}</span>
+    </div>
+    <div class="search-channel-list">
+        {{#each categories}}
+        <a href="/blog?category={{id}}">
+            <span><strong>{{name}}</strong><small>/{{slug}}</small></span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </a>
+        {{/each}}
+    </div>
+</section>
+{{/if}}
+
+{{#unless members.length}}
+{{#unless categories.length}}
+<div class="empty-state search-empty-state">
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <h2>{{#if query}}No matches found{{else}}Start with the search box above{{/if}}</h2>
+    <p>{{#if query}}Try a shorter name or browse all channels.{{else}}Search works by member name or channel.{{/if}}</p>
+    <a class="wf-btn ghost mt-3" href="/categories">Browse channels</a>
+</div>
+{{/unless}}
+{{/unless}}

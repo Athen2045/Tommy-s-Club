@@ -11,7 +11,8 @@ And No, My name is not Tommy as you can see. It’s just a name for the project 
 ## What you can explore
 
 - Email-verified accounts with terms acceptance and later admin approval or rejection.
-- A blog with categories, drafts, publishing, reactions, threaded comments, and optimized images.
+- A followed-channel home feed with drafts, publishing, reactions, recursive comments, channel pins, and up to four optimized images per post.
+- Member and channel discovery with keyboard-friendly search and Join/Joined channel controls.
 - The Room, a realtime chat with @mentions and text or image messages.
 - Pseudonymous profiles with avatars, bios, username uniqueness, privacy controls, and account settings.
 - A small admin area for approvals and category management.
@@ -94,7 +95,7 @@ Important variables:
 | `IMAGEKIT_PUBLIC_KEY` | ImageKit public key |
 | `IMAGEKIT_PRIVATE_KEY` | Server-only ImageKit private key |
 | `IMAGEKIT_URL_ENDPOINT` | ImageKit delivery endpoint |
-| `ADMIN_EMAIL` | Account email that receives admin privileges at login |
+| `ADMIN_USER_ID` | Supabase Auth user UUID for the sole administrator; IDs, not email addresses, are used for authorization |
 | `NODE_ENV` | `development` locally, `production` when deployed |
 | `PORT` | Optional server port; defaults to `8080` |
 
@@ -107,6 +108,7 @@ Run these files in order in the Supabase SQL Editor:
 1. [`20260715-chat-message-images.sql`](./20260715-chat-message-images.sql) adds optional chat image fields and content constraints.
 2. [`20260716-platform-hardening.sql`](./20260716-platform-hardening.sql) adds persistent sessions, distributed rate limits, one-time realtime credentials, media identifiers, indexes, and verification queries.
 3. [`20260716-rate-limit-function-fix.sql`](./20260716-rate-limit-function-fix.sql) repairs the production rate-limit function used by login and registration. It is safe to run after the hardening migration and is required if you previously ran an older copy of that migration.
+4. [`20260717-blog-feed-media-hardening.sql`](./20260717-blog-feed-media-hardening.sql) adds channel follows, ordered post galleries, comment images, channel pins, search indexes, and targeted advisor hardening. Review its preflight results before running the transaction, then run its verification queries.
 
 The second migration is required before deploying this version to Vercel. Its internal tables deny `anon` and `authenticated` access and are used only through the server-side service role.
 
@@ -138,6 +140,9 @@ npm start
 
 # Static verification
 npm run check
+
+# Node tests, including media-policy and template checks
+npm test
 ```
 
 Open <http://localhost:8080> unless you chose another `PORT`.
@@ -192,7 +197,8 @@ Use [`ISSUES.md`](./ISSUES.md) as the shared fix-and-improvement checklist. For 
 - Connect Vercel to `Athen2045/Tommy-s-Club`, not the older `Blog-Post-main` repository.
 - Select Node.js 22 and add every variable from `.env.example` with production values.
 - Set `APP_URL=https://tommysclub.vercel.app` and `NODE_ENV=production`. `deployment` is not a valid `NODE_ENV` value for this project.
-- Apply both SQL migrations before deploying. Production sessions and rate limits intentionally do not fall back to process memory.
+- Apply the SQL migrations in the documented order before deploying. Production sessions and rate limits intentionally do not fall back to process memory.
+- Set `ADMIN_USER_ID` to the administrator’s Supabase Auth UUID; email addresses are intentionally not used as an authorization source.
 - Changing `SESSION_SECRET` signs out existing sessions. Do not restore an old or exposed secret.
 - Uploads go directly from the browser to ImageKit, avoiding Vercel’s function body limit. The server verifies the resulting file before attaching it to content.
 - Chat prefers the WebSocket relay and automatically falls back to authenticated incremental polling after repeated connection failures.
@@ -201,13 +207,15 @@ Use [`ISSUES.md`](./ISSUES.md) as the shared fix-and-improvement checklist. For 
 
 ```text
 Tommy's Club/
-├── server.js                         # Express routes, middleware, and WebSocket relay
+├── server.js                         # Express app factory, runtime composition, and WebSocket relay
 ├── auth-service.js                    # Supabase Auth operations
 ├── blog-service.js                    # Posts, comments, reactions, profiles, chat, and categories
+├── media-service.js                   # Canonical ImageKit verification, transforms, and cleanup
 ├── platform-store.js                  # Persistent sessions, rate limits, and realtime credentials
 ├── 20260715-chat-message-images.sql   # Chat image schema migration and verification queries
 ├── 20260716-platform-hardening.sql     # Vercel/Supabase hardening migration
 ├── 20260716-rate-limit-function-fix.sql # Production rate-limit function repair
+├── 20260717-blog-feed-media-hardening.sql # Follows, galleries, comment media, pins, and search
 ├── ISSUES.md                           # Contributor fix and improvement checklist
 ├── public/
 │   ├── assets/                        # Project-owned image assets
@@ -219,6 +227,11 @@ Tommy's Club/
 │       ├── entry-transition.js         # Login-to-application transition
 │       ├── forms.js                    # Shared form behavior
 │       ├── media-upload.js              # Direct authenticated ImageKit uploads
+│       ├── post-media.js                # Four-image post composer and accessible ordering
+│       ├── comments.js                  # Reply focus, comment media, and composer validation
+│       ├── discovery.js                 # Search combobox and joined-channel disclosure
+│       ├── gallery.js                   # Keyboard and touch post carousel
+│       ├── navigation.js                # Profile menus and authenticated unread state
 │       └── motion.js                   # Small application motion enhancements
 ├── views/                             # Handlebars pages and layouts
 ├── .env.example                       # Safe environment variable template
@@ -235,7 +248,7 @@ Tommy's Club/
 - Supabase application tables use RLS and deny direct browser access.
 - `SUPABASE_SERVICE_KEY` and `IMAGEKIT_PRIVATE_KEY` stay server-side.
 - Post and chat content is validated and sanitized before display.
-- Browser uploads are restricted to supported image MIME types and an 8 MB limit, then verified against ImageKit server-side.
+- Browser uploads are restricted to supported image MIME types and an 8 MB per-image limit. The server retrieves ImageKit’s canonical record and verifies its owner folder, type, size, dimensions, and delivery origin before saving it.
 - Ownership checks protect destructive post, comment, message, and account operations.
 - Persistent sessions, distributed rate limits, and hashed one-time WebSocket credentials survive Vercel function changes.
 - The WebSocket relay keeps Supabase service credentials away from the browser and has an authenticated polling fallback.

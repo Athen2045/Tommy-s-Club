@@ -3,52 +3,57 @@
     <h1 class="wf-h2">New Post</h1>
 </div>
 
-<form method="POST" action="/posts/add" enctype="multipart/form-data" id="postForm"
+<form method="POST" action="/posts/add" id="postForm"
     style="max-width:760px;display:flex;flex-direction:column;gap:18px">
     <input type="hidden" name="_csrf" value="{{csrfToken}}">
-    <input type="hidden" name="feature_image_url" id="featureImageUrl">
-    <input type="hidden" name="feature_image_file_id" id="featureImageFileId">
 
     {{#if errorMessage}}
     <div class="gate-error" role="alert" tabindex="-1">{{errorMessage}}</div>
     {{/if}}
 
     <!-- Title -->
+    <label class="gate-label" for="title">Story title</label>
     <input type="text" class="post-title-input" id="title" name="title"
         value="{{formData.title}}" placeholder="Give your story a title" maxlength="160" required>
 
     <!-- Quill editor -->
     <div>
-        <div class="wf-label mb-2">Content</div>
-        <div id="quill-editor"></div>
+        <div class="wf-label mb-2" id="contentLabel">Content</div>
+        <div id="quill-editor" aria-labelledby="contentLabel"></div>
         <textarea name="body" id="bodyField" style="display:none">{{formData.body}}</textarea>
     </div>
 
-    <!-- Channel + cover image -->
-    <div class="wf-row" style="gap:16px;align-items:flex-start">
-        <div class="gate-field" style="flex:1">
-            <label class="gate-label">Channel</label>
-            {{#if categories}}
-            <select class="gate-input" name="category" id="category">
-                <option value="">No channel</option>
-                {{#each categories}}
-                <option value="{{id}}" {{#equal id ../formData.category}}selected{{/equal}}>{{name}}</option>
-                {{/each}}
-            </select>
-            {{else}}
-            <div class="wf-mono" style="padding:8px 0">No channels yet.</div>
-            {{/if}}
-        </div>
-        <div class="gate-field" style="flex:1.5">
-            <label class="gate-label" for="featureImage">Cover image (optional)</label>
-            <input class="gate-input file-input" type="file" id="featureImage" name="featureImage"
-                accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
-                data-media-kind="post-cover" data-media-url-field="#featureImageUrl"
-                data-media-id-field="#featureImageFileId" data-media-feedback="#featureImageFeedback">
-            <span class="form-helper">JPEG, PNG, GIF, WebP, or AVIF.</span>
-            <span class="form-helper form-upload-feedback" id="featureImageFeedback" aria-live="polite"></span>
-        </div>
+    <div class="gate-field">
+        <label class="gate-label" for="category">Channel</label>
+        {{#if categories}}
+        <select class="gate-input" name="category" id="category">
+            <option value="">No channel</option>
+            {{#each categories}}
+            <option value="{{id}}" {{#equal id ../formData.category}}selected{{/equal}}>{{name}}</option>
+            {{/each}}
+        </select>
+        {{else}}
+        <div class="wf-mono" style="padding:8px 0">No channels yet.</div>
+        {{/if}}
     </div>
+
+    <section class="post-media-composer" data-post-media aria-labelledby="postMediaHeading">
+        <div class="post-media-heading">
+            <div>
+                <span class="wf-eyebrow">Optional gallery</span>
+                <h2 id="postMediaHeading">Add up to four images</h2>
+            </div>
+            <span class="post-media-count" data-post-media-count>0 / 4</span>
+        </div>
+        <p class="form-helper">The first image becomes the feed cover. JPEG, PNG, GIF, WebP, or AVIF; 8 MB per image.</p>
+        <label class="file-picker-button" for="postImages">
+            <i class="bi bi-images" aria-hidden="true"></i>
+            <span>Choose images</span>
+        </label>
+        <input class="sr-only" type="file" id="postImages" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" multiple data-post-media-input>
+        <div class="post-media-list" data-post-media-list></div>
+        <p class="form-upload-feedback" data-post-media-feedback aria-live="polite"></p>
+    </section>
 
     <!-- Actions -->
     <div class="post-submit-actions">
@@ -77,37 +82,9 @@
                     [{ header: [1, 2, false] }],
                     ['bold', 'italic', 'blockquote', 'code-block'],
                     [{ list: 'bullet' }],
-                    ['link', 'image'],
+                    ['link'],
                     ['clean']
-                ],
-                handlers: {
-                    image: function () {
-                        var input = document.createElement('input');
-                        input.setAttribute('type', 'file');
-                        input.setAttribute('accept', 'image/*');
-                        input.click();
-                        input.onchange = function () {
-                            var file = input.files[0];
-                            if (!file) return;
-                            window.TommyMedia.upload(file, 'post-inline')
-                                .then(function (media) {
-                                    return fetch('/posts/upload-image', {
-                                        method: 'POST',
-                                        headers: { 'X-CSRF-Token': window.CSRF_TOKEN, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ image_url: media.url, image_file_id: media.fileId })
-                                    });
-                                })
-                                .then(function (r) { return r.json().then(function (json) { if (!r.ok) throw new Error(json.error || 'Upload failed'); return json; }); })
-                                .then(function (json) {
-                                    if (json.url) {
-                                        var range = quill.getSelection(true);
-                                        quill.insertEmbed(range.index, 'image', json.url);
-                                    }
-                                })
-                                .catch(function (error) { window.alert(error.message); });
-                        };
-                    }
-                }
+                ]
             }
         }
     });
@@ -120,3 +97,4 @@
     });
 })();
 </script>
+<script src="/js/post-media.js" defer></script>

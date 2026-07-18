@@ -6,7 +6,10 @@
     if (!configEl || !container) return;
 
     var config = JSON.parse(configEl.textContent || '{}');
-    var members = Array.isArray(config.members) ? config.members : [];
+    var memberRecords = Array.isArray(config.members) ? config.members.map(function (member) {
+        return typeof member === 'string' ? { username: member, isAdmin: false } : member;
+    }) : [];
+    var members = memberRecords.map(function (member) { return member.username; });
     var currentUserId = config.currentUserId || '';
     var isAdmin = Boolean(config.isAdmin);
     var imagekitEndpoint = config.imagekitEndpoint || '';
@@ -104,6 +107,18 @@
         author.href = '/member/' + encodeURIComponent(msg.username || '');
         author.textContent = msg.username || 'unknown';
         meta.appendChild(author);
+        if (msg.is_admin) {
+            var adminBadge = document.createElement('img');
+            adminBadge.className = 'admin-verified-badge';
+            adminBadge.src = '/assets/admin-verified.jpeg';
+            adminBadge.alt = '';
+            adminBadge.setAttribute('aria-hidden', 'true');
+            meta.appendChild(adminBadge);
+            var adminText = document.createElement('span');
+            adminText.className = 'sr-only';
+            adminText.textContent = 'Administrator';
+            meta.appendChild(adminText);
+        }
         var time = document.createElement('time');
         time.className = 'chat-msg-time';
         time.textContent = formatTime(msg.created_at);
@@ -246,10 +261,24 @@
 
     document.getElementById('membersList').replaceChildren.apply(
         document.getElementById('membersList'),
-        members.map(function (name) {
+        memberRecords.map(function (member) {
             var item = document.createElement('div');
             item.className = 'chat-member-item';
-            item.textContent = name;
+            var name = document.createElement('span');
+            name.textContent = member.username;
+            item.appendChild(name);
+            if (member.isAdmin) {
+                var badge = document.createElement('img');
+                badge.className = 'admin-verified-badge';
+                badge.src = '/assets/admin-verified.jpeg';
+                badge.alt = '';
+                badge.setAttribute('aria-hidden', 'true');
+                item.appendChild(badge);
+                var adminText = document.createElement('span');
+                adminText.className = 'sr-only';
+                adminText.textContent = 'Administrator';
+                item.appendChild(adminText);
+            }
             return item;
         })
     );
