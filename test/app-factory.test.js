@@ -54,4 +54,5 @@ test('createApp imports without credentials and accepts injected adapters', () =
     assert.ok(routes.includes('POST /categories/:id/follow'));
     assert.ok(routes.includes('POST /categories/:id/pin'));
     assert.ok(routes.includes('GET /search'));
+    assert.ok(routes.includes('GET /sitemap.xml'));
 });

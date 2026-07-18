@@ -93,6 +93,17 @@ module.exports.getPublishedPosts = async () => {
     return attachProfiles(normalizeCommentCounts(data));
 };
 
+module.exports.getSitemapPosts = async () => {
+    const { data, error } = await supabase
+        .from('posts')
+        .select('id, created_at, updated_at')
+        .eq('published', true)
+        .order('id', { ascending: true })
+        .limit(49997);
+    if (error) throw new Error('unable to load sitemap posts');
+    return data || [];
+};
+
 module.exports.getPublishedPostsByCategory = async (categoryId) => {
     const { data, error } = await supabase
         .from('posts')

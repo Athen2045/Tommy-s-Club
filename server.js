@@ -59,6 +59,7 @@ const blogService = dependencies.blogService || require('./blog-service');
 const authService = dependencies.authService || require('./auth-service');
 const platformClient = dependencies.platformClient || createServerClient();
 const runtimeState = dependencies.runtimeState || new SupabaseRuntimeState(platformClient);
+const logger = dependencies.logger || console;
 
 // ── ImageKit ──────────────────────────────────────────────
 const imagekit = dependencies.imagekit || new ImageKit({
@@ -69,7 +70,7 @@ const imagekit = dependencies.imagekit || new ImageKit({
 const mediaService = dependencies.mediaService || createMediaService({
     imagekit,
     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
-    logger: dependencies.logger || console
+    logger
 });
 
 // ── File upload — type + size guards ─────────────────────
@@ -459,6 +460,51 @@ function safeReturnPath(req, fallback = '/categories') {
     }
 }
 
+function escapeXml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+function sitemapDate(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function buildSitemapXml(posts) {
+    const entries = ['/blog', '/about', '/categories'].map(pathname => ({
+        loc: new URL(pathname, `${APP_URL}/`).toString()
+    }));
+
+    for (const post of posts || []) {
+        const id = Number(post?.id);
+        if (!Number.isInteger(id) || id < 1) continue;
+        entries.push({
+            loc: new URL(`/blog/${encodeURIComponent(String(id))}`, `${APP_URL}/`).toString(),
+            lastmod: sitemapDate(post.updated_at || post.created_at)
+        });
+    }
+
+    const urls = entries.map(entry => {
+        const lines = ['  <url>', `    <loc>${escapeXml(entry.loc)}</loc>`];
+        if (entry.lastmod) lines.push(`    <lastmod>${escapeXml(entry.lastmod)}</lastmod>`);
+        lines.push('  </url>');
+        return lines.join('\n');
+    }).join('\n');
+
+    return [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        urls,
+        '</urlset>',
+        ''
+    ].join('\n');
+}
+
 // ── Routes: public ────────────────────────────────────────
 
 app.get('/', (req, res) => {
@@ -472,6 +518,21 @@ app.get('/', (req, res) => {
 });
 
 app.get('/about', (req, res) => res.render('about'));
+
+app.get('/sitemap.xml', async (_req, res) => {
+    try {
+        const posts = await blogService.getSitemapPosts();
+        res.set({
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
+        });
+        return res.send(buildSitemapXml(posts));
+    } catch (err) {
+        logger.error?.('Unable to generate sitemap', { error: err?.message || 'unknown error' });
+        res.set('Cache-Control', 'no-store');
+        return res.status(503).type('text/plain').send('Sitemap temporarily unavailable');
+    }
+});
 
 app.get('/blog', async (req, res) => {
     try {
